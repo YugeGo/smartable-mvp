@@ -28,7 +28,7 @@ executeBtn.addEventListener("click", async () => {
         }
 
         const result = await response.json();
-        resultDisplay.textContent = result.message;
+        resultDisplay.textContent = result.result ?? "AI未返回结果。";
     } catch (error) {
         console.error(error);
         resultDisplay.textContent = "处理时出现错误，请稍后再试。";
