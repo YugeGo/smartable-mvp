@@ -1,9 +1,11 @@
 import OpenAI from 'openai';
 
-// Initialize the client, but point it to DeepSeek's servers
+// Initialize the client for DeepSeek with compatibility settings
 const deepseek = new OpenAI({
     apiKey: process.env.DEEPSEEK_API_KEY,
-    baseURL: "https://api.deepseek.com/v1" // This is the crucial change!
+    baseURL: "https://api.deepseek.com", // Correct baseURL without /v1
+    defaultHeaders: { "x-foo": "bar" }, // Dummy header to override defaults
+    dangerouslyAllowBrowser: true, // Necessary for some environments, though we are backend
 });
 
 export default async function handler(request, response) {
@@ -34,17 +36,35 @@ Command:
 ${command}
 ---
 `;
-
-        const completion = await deepseek.chat.completions.create({
-            model: "deepseek-chat", // Use DeepSeek's model name
-            messages: [{ role: "user", content: prompt }],
+        
+        // Use fetch for a more direct and cleaner API call
+        const apiResponse = await fetch("https://api.deepseek.com/chat/completions", {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${process.env.DEEPSEEK_API_KEY}`,
+            },
+            body: JSON.stringify({
+                model: "deepseek-chat",
+                messages: [{ role: "user", content: prompt }],
+                stream: false, // Explicitly set stream to false
+            }),
         });
+        
+        if (!apiResponse.ok) {
+            // If the API returns an error, log it and throw an error
+            const errorBody = await apiResponse.json();
+            console.error("DeepSeek API Error:", errorBody);
+            throw new Error(`API request failed with status ${apiResponse.status}`);
+        }
 
+        const completion = await apiResponse.json();
         const aiResponse = completion.choices[0].message.content;
+        
         return response.status(200).json({ result: aiResponse });
 
     } catch (error) {
-        console.error("Error calling DeepSeek API:", error);
+        console.error("Handler Error:", error);
         return response.status(500).json({ result: "处理时出现错误，请稍后再试。" });
     }
 }
