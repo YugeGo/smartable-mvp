@@ -25,7 +25,7 @@ export default async function handler(request, response) {
             `Instruction:\n${command || ""}`
         ].join("\n\n");
 
-        const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+        const model = genAI.getGenerativeModel({ model: "gemini-pro"});
         const result = await model.generateContent(prompt);
         const aiResponse = await result.response;
         const text = aiResponse.text().trim();
