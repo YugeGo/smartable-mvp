@@ -17,9 +17,18 @@ executeBtn.addEventListener("click", async () => {
     console.log("Command:", userCommand);
 
     try {
-        const mockResponse = "这是一个从AI返回的模拟结果。";
-        await new Promise((resolve) => setTimeout(resolve, 1500));
-        resultDisplay.textContent = mockResponse;
+        const response = await fetch("/api/process", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data: userInputData, command: userCommand })
+        });
+
+        if (!response.ok) {
+            throw new Error(`Request failed with status ${response.status}`);
+        }
+
+        const result = await response.json();
+        resultDisplay.textContent = result.message;
     } catch (error) {
         console.error(error);
         resultDisplay.textContent = "处理时出现错误，请稍后再试。";
