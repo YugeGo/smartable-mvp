@@ -1656,6 +1656,30 @@ thead th {
 	opacity: 0.8;
 }
 
+/* 表格表头吸顶（预览与AI卡片内表格） */
+.preview-table thead th,
+.ai-message .table-wrapper thead th {
+	position: sticky;
+	top: 0;
+	z-index: 2;
+	background: rgba(248, 250, 252, 0.96);
+	backdrop-filter: blur(6px);
+}
+body.dark-mode .preview-table thead th,
+body.dark-mode .ai-message .table-wrapper thead th {
+	background: rgba(17, 24, 39, 0.92);
+}
+
+/* 预览表格斑马纹，提升可读性 */
+.preview-table tbody tr:nth-child(even) td,
+.ai-message .table-wrapper tbody tr:nth-child(even) td {
+	background: rgba(148, 163, 184, 0.06);
+}
+body.dark-mode .preview-table tbody tr:nth-child(even) td,
+body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
+	background: rgba(148, 163, 184, 0.08);
+}
+
 .message a {
 	color: #93c5fd;
 	text-decoration: none;
@@ -1744,7 +1768,7 @@ thead th {
 	}
 
 	.preview-table {
-		max-height: 240px;
+		max-height: 60vh;
 	}
 
 	#onboarding-banner {
@@ -1788,6 +1812,15 @@ thead th {
 	#input-area {
 		flex-direction: column;
 		align-items: stretch;
+		position: sticky;
+		bottom: 0;
+		z-index: 5;
+		padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+	}
+
+	/* 消息列表底部留白，避免被输入区遮挡 */
+	#message-list {
+		padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
 	}
 
 	#chart-shortcuts {
@@ -1822,7 +1855,22 @@ thead th {
 
 	textarea#command-input {
 		width: 100%;
+		font-size: 16px; /* 避免 iOS 输入放大 */
+		min-height: 3.5rem;
 	}
+
+	/* 增大触控尺寸 */
+	.data-tools select,
+	.data-tools input[type="text"],
+	.data-tools input[type="number"],
+	.data-tools button,
+	.input-btn {
+		min-height: 44px;
+		font-size: 16px;
+	}
+
+	/* 移动端没有 hover，操作按钮默认展示 */
+	.ai-message .action-buttons { display: flex; }
 }
 
 /*
