@@ -1,9 +1,11 @@
-// api/process.js - V1.1
+// api/process.js - V1.1 (DeepSeek Final Version)
 
-import Groq from 'groq-sdk';
+import OpenAI from 'openai';
 
-const groq = new Groq({
-    apiKey: process.env.GROQ_API_KEY,
+// Initialize the client, but point it to DeepSeek's servers using the OpenAI library
+const deepseek = new OpenAI({
+    apiKey: process.env.DEEPSEEK_API_KEY,
+    baseURL: "https://api.deepseek.com" // Use the base URL without /v1
 });
 
 export default async function handler(request, response) {
@@ -17,7 +19,7 @@ export default async function handler(request, response) {
             return response.status(400).json({ error: 'Data and command are required.' });
         }
 
-        // V1.1 Update: More specific prompt for CSV output
+        // V1.1 Updated Prompt for CSV output
         const prompt = `
 You are a world-class data analyst specializing in spreadsheets. You are precise and efficient.
 You will be given user-provided spreadsheet data as a string, and a command as a string.
@@ -34,9 +36,9 @@ Command:
 ${command}
 ---
 `;
-        
-        const completion = await groq.chat.completions.create({
-            model: "llama3-8b-8192",
+
+        const completion = await deepseek.chat.completions.create({
+            model: "deepseek-chat", // Use DeepSeek's model name
             messages: [{ role: "user", content: prompt }],
         });
 
@@ -44,7 +46,7 @@ ${command}
         return response.status(200).json({ result: aiResponse });
 
     } catch (error) {
-        console.error("Error calling Groq API:", error);
+        console.error("Error calling DeepSeek API:", error);
         return response.status(500).json({ result: "处理时出现错误，请稍后再试。" });
     }
 }
