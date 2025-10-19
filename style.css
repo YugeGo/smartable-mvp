@@ -20,6 +20,8 @@
 *   为消息周围添加内边距以留出空间。
 */
 
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500&display=swap');
+
 :root {
 	--bg-gradient: radial-gradient(circle at 12% 20%, rgba(125, 211, 252, 0.55) 0%, rgba(125, 211, 252, 0) 45%), radial-gradient(circle at 82% 0%, rgba(196, 181, 253, 0.6) 0%, rgba(196, 181, 253, 0) 40%), linear-gradient(160deg, #f8fafc 0%, #e2e8f0 100%);
 	--glass-surface: rgba(255, 255, 255, 0.78);
@@ -50,8 +52,6 @@ body.dark-mode {
 	--user-gradient: linear-gradient(135deg, #38bdf8 0%, #818cf8 100%);
 	--surface-elevated: rgba(30, 41, 59, 0.85);
 }
-
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500&display=swap');
 
 *, *::before, *::after {
 	box-sizing: border-box;
