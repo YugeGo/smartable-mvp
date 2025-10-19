@@ -18,14 +18,12 @@ const dataPasteSubmit = document.getElementById('data-paste-submit');
 const dataPasteCancel = document.getElementById('data-paste-cancel');
 const dataPasteClose = document.getElementById('data-paste-close');
 const newSessionBtn = document.getElementById('new-session-btn');
-const dataSourceList = document.getElementById('data-source-list');
+const datasetTray = document.getElementById('dataset-tray');
 const dataPreviewSection = document.getElementById('data-preview');
 const dataPreviewTitle = document.getElementById('data-preview-title');
 const dataPreviewTable = document.getElementById('data-preview-table');
 const dataPreviewFootnote = document.getElementById('data-preview-footnote');
-const chartStyleSelect = document.getElementById('chart-style-select');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
-const chartStyleControl = document.getElementById('chart-style-control');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
 
@@ -33,7 +31,6 @@ const STORAGE_KEYS = {
     initialMessage: 'smartable:initial-message',
     bannerDismissed: 'smartable:banner-dismissed',
     session: 'smartable:session',
-    chartStyle: 'smartable:chart-style',
     darkMode: 'smartable:dark-mode'
 };
 
@@ -44,7 +41,6 @@ let messages = [];
 let workspace = {};
 // The name of the table currently being viewed/edited.
 let activeTableName = '';
-let currentChartStyle = 'classic';
 let isDarkMode = false;
 
 var CHART_COLOR_PRESETS = Object.freeze({
@@ -92,6 +88,8 @@ var CHART_SHORTCUTS = [
     }
 ];
 
+const CHART_PROMPT_SHORTCUT_IDS = ['line-trend', 'bar-compare', 'pie-share'];
+
 // --- 3. Core Functions ---
 
 /**
@@ -117,7 +115,6 @@ function renderChart(chartOption, containerElement) {
         }
         const chartInstance = echarts.init(containerElement);
         chartInstance.setOption(enhancedOption, true);
-        refreshChartStyleControlVisibility();
     } catch (error) {
         console.error('Failed to render chart:', error);
         containerElement.textContent = '图表渲染失败。';
@@ -356,6 +353,7 @@ async function handleSendMessage() {
                 }
 
                 setActiveTable(destinationTableName);
+                showChartPrompt('post-result', destinationTableName);
             }
         }
     } catch (error) {
@@ -412,6 +410,7 @@ async function handleFileSelect(event) {
         setActiveTable(tableName);
         addMessage('system', `文件 ${tableName} 上传成功，数据已准备就绪。`);
         updateUploadStatus(`✅ ${tableName} · ${formatFileSize(file.size)} · ${headers.length} 列 · ${rowCount} 行`, 'success');
+        showChartPrompt('upload', tableName);
     } catch (error) {
         console.error('Failed to process file:', error);
         updateUploadStatus(`⚠️ ${file.name} 读取失败，请确保文件格式正确。`, 'error');
@@ -494,9 +493,6 @@ function setLoadingState(isLoading) {
     }
     if (newSessionBtn) {
         newSessionBtn.disabled = isLoading;
-    }
-    if (chartStyleSelect) {
-        chartStyleSelect.disabled = isLoading;
     }
     if (darkModeToggle) {
         darkModeToggle.disabled = isLoading;
@@ -685,6 +681,7 @@ function handlePasteSubmit() {
     setActiveTable(tableName);
     addMessage('system', `粘贴数据 ${tableName} 成功，随时输入指令开始分析。`);
     updateUploadStatus(`✅ ${tableName} · ${headers.length} 列 · ${rowCount} 行`, 'success');
+    showChartPrompt('upload', tableName);
 
     dataPasteArea.value = '';
     closeDataInputPanel();
@@ -760,8 +757,8 @@ function applyChartStylePalette(option) {
 }
 
 function getActiveChartPalette() {
-    const lightPalette = CHART_COLOR_PRESETS[currentChartStyle] || CHART_COLOR_PRESETS.classic;
-    const darkPalette = CHART_COLOR_PRESETS_DARK[currentChartStyle] || CHART_COLOR_PRESETS_DARK.classic;
+    const lightPalette = CHART_COLOR_PRESETS.classic;
+    const darkPalette = CHART_COLOR_PRESETS_DARK.classic;
     return isDarkMode ? darkPalette : lightPalette;
 }
 
@@ -1014,18 +1011,22 @@ function serializeWorkspace(source) {
 }
 
 function renderDataSourceList() {
-    if (!dataSourceList) {
+    if (datasetTray) {
+        datasetTray.innerHTML = '';
+    }
+
+    const tableNames = Object.keys(workspace);
+
+    if (!datasetTray) {
+        renderActiveTablePreview();
         return;
     }
 
-    dataSourceList.innerHTML = '';
-
-    const tableNames = Object.keys(workspace);
     if (tableNames.length === 0) {
-        const emptyItem = document.createElement('div');
-        emptyItem.classList.add('data-source-empty');
-        emptyItem.textContent = '暂无数据源';
-        dataSourceList.appendChild(emptyItem);
+        const emptyBadge = document.createElement('span');
+        emptyBadge.classList.add('dataset-empty');
+        emptyBadge.textContent = '尚未上传数据';
+        datasetTray.appendChild(emptyBadge);
         renderActiveTablePreview();
         return;
     }
@@ -1034,38 +1035,38 @@ function renderDataSourceList() {
         const tableEntry = workspace[tableName];
         const { columnCount, rowCount } = getTableStats(tableEntry?.currentData);
 
-        const item = document.createElement('div');
-        item.classList.add('data-source-item');
+        const chip = document.createElement('div');
+        chip.classList.add('dataset-chip');
         if (tableName === activeTableName) {
-            item.classList.add('active');
+            chip.classList.add('active');
         }
 
         const selectBtn = document.createElement('button');
         selectBtn.type = 'button';
-        selectBtn.classList.add('data-source-select');
+        selectBtn.classList.add('dataset-chip-select');
         selectBtn.textContent = tableName;
+        const statsLabel = `${columnCount} 列 · ${rowCount} 行`;
+        selectBtn.title = statsLabel;
+        selectBtn.setAttribute('aria-label', `${tableName} · ${statsLabel}`);
         selectBtn.addEventListener('click', () => {
-            setActiveTable(tableName);
+            if (tableName !== activeTableName) {
+                setActiveTable(tableName);
+            }
         });
 
-        const meta = document.createElement('span');
-        meta.classList.add('data-source-meta');
-        meta.textContent = `${columnCount} 列 · ${rowCount} 行`;
-
-        const deleteBtn = document.createElement('button');
-        deleteBtn.type = 'button';
-        deleteBtn.classList.add('data-source-delete');
-        deleteBtn.setAttribute('aria-label', `移除 ${tableName}`);
-        deleteBtn.textContent = '✕';
-        deleteBtn.addEventListener('click', event => {
+        const removeBtn = document.createElement('button');
+        removeBtn.type = 'button';
+        removeBtn.classList.add('dataset-chip-remove');
+        removeBtn.setAttribute('aria-label', `移除 ${tableName}`);
+        removeBtn.textContent = '×';
+        removeBtn.addEventListener('click', event => {
             event.stopPropagation();
             removeTable(tableName);
         });
 
-        item.appendChild(selectBtn);
-        item.appendChild(meta);
-        item.appendChild(deleteBtn);
-        dataSourceList.appendChild(item);
+        chip.appendChild(selectBtn);
+        chip.appendChild(removeBtn);
+        datasetTray.appendChild(chip);
     });
 
     renderActiveTablePreview();
@@ -1092,7 +1093,7 @@ function renderActiveTablePreview() {
     if (!activeTableName || !workspace[activeTableName]) {
         dataPreviewSection.classList.add('empty');
         dataPreviewTitle.textContent = '当前数据源';
-        dataPreviewTable.innerHTML = '<p class="data-preview-placeholder">请选择数据源以查看表格。</p>';
+        dataPreviewTable.innerHTML = '<p class="data-preview-placeholder">上传或选择数据源后，这里会显示表格预览。</p>';
         if (dataPreviewFootnote) {
             dataPreviewFootnote.textContent = '';
         }
@@ -1101,15 +1102,15 @@ function renderActiveTablePreview() {
 
     const tableEntry = workspace[activeTableName];
     const fullCsv = tableEntry.currentData || '';
-        if (!fullCsv.trim()) {
-            dataPreviewSection.classList.remove('empty');
-            dataPreviewTitle.textContent = `当前数据源 · ${activeTableName}`;
-            dataPreviewTable.innerHTML = '<p class="data-preview-placeholder">该数据源目前没有可展示的行。</p>';
-            if (dataPreviewFootnote) {
-                dataPreviewFootnote.textContent = '';
-            }
-            return;
+    if (!fullCsv.trim()) {
+        dataPreviewSection.classList.remove('empty');
+        dataPreviewTitle.textContent = `当前数据源 · ${activeTableName}`;
+        dataPreviewTable.innerHTML = '<p class="data-preview-placeholder">该数据源目前没有可展示的行。</p>';
+        if (dataPreviewFootnote) {
+            dataPreviewFootnote.textContent = '';
         }
+        return;
+    }
     const rows = fullCsv ? fullCsv.trim().split('\n') : [];
     const previewRowLimit = 120;
     const hasHeader = rows.length > 0;
@@ -1139,12 +1140,12 @@ function renderActiveTablePreview() {
 
 function setActiveTable(tableName) {
     if (!tableName || !workspace[tableName]) {
-    activeTableName = '';
-    renderDataSourceList();
-    updateUploadStatus('数据源已清空，请上传或粘贴新的数据。');
-    saveSession();
-    syncChartShortcutButtons();
-    return;
+        activeTableName = '';
+        renderDataSourceList();
+        updateUploadStatus('数据源已清空，请上传或粘贴新的数据。');
+        saveSession();
+        syncChartShortcutButtons();
+        return;
     }
 
     activeTableName = tableName;
@@ -1163,6 +1164,14 @@ function removeTable(tableName) {
 
     delete workspace[tableName];
 
+    if (messageList) {
+        Array.from(messageList.querySelectorAll('.chart-suggestion')).forEach(node => {
+            if (node instanceof HTMLElement && node.dataset.table === tableName) {
+                node.remove();
+            }
+        });
+    }
+
     if (tableName === activeTableName) {
         const remainingNames = Object.keys(workspace);
         activeTableName = remainingNames[0] || '';
@@ -1177,7 +1186,6 @@ function removeTable(tableName) {
 
     addMessage('system', `数据源 ${tableName} 已移除。`);
     renderDataSourceList();
-    renderActiveTablePreview();
     saveSession();
     syncChartShortcutButtons();
 }
@@ -1230,11 +1238,10 @@ function loadSession() {
             const rowCount = Math.max(tableData.split('\n').length - 1, 0);
             updateUploadStatus(`✅ 会话已恢复: ${activeTableName} · ${headers.length} 列 · ${rowCount} 行`, 'success');
         } else {
-            updateUploadStatus('✅ 会话已恢复，请从左侧选择数据源。', 'success');
+            updateUploadStatus('✅ 会话已恢复，请在上方选择或上传数据源。', 'success');
         }
 
         renderDataSourceList();
-    renderActiveTablePreview();
         syncChartShortcutButtons();
 
         return true;
@@ -1260,8 +1267,6 @@ function rerenderAllCharts() {
             console.error('Failed to re-render chart:', error);
         }
     });
-
-    refreshChartStyleControlVisibility();
 }
 
 function applyDarkMode(enable) {
@@ -1274,20 +1279,10 @@ function applyDarkMode(enable) {
 }
 
 function initializeThemeControls() {
-    if (chartStyleSelect) {
-        const savedStyle = localStorage.getItem(STORAGE_KEYS.chartStyle);
-        if (savedStyle && chartStyleSelect.querySelector(`option[value="${savedStyle}"]`)) {
-            currentChartStyle = savedStyle;
-            chartStyleSelect.value = savedStyle;
-        } else {
-            chartStyleSelect.value = currentChartStyle;
-        }
-
-        chartStyleSelect.addEventListener('change', event => {
-            currentChartStyle = event.target.value || 'classic';
-            localStorage.setItem(STORAGE_KEYS.chartStyle, currentChartStyle);
-            rerenderAllCharts();
-        });
+    try {
+        localStorage.removeItem('smartable:chart-style');
+    } catch (error) {
+        console.warn('Failed to clear legacy chart style preference:', error);
     }
 
     const savedDarkPreference = localStorage.getItem(STORAGE_KEYS.darkMode);
@@ -1307,8 +1302,6 @@ function initializeThemeControls() {
             rerenderAllCharts();
         });
     }
-
-    refreshChartStyleControlVisibility();
 }
 
 function initializeChartShortcuts() {
@@ -1366,22 +1359,67 @@ function syncChartShortcutButtons(forceDisable = false) {
     }
 }
 
-function refreshChartStyleControlVisibility() {
-    if (!chartStyleControl) {
+function showChartPrompt(reason, tableName) {
+    if (!messageList || !tableName || !workspace[tableName]) {
         return;
     }
 
-    const hasCharts = Boolean(document.querySelector('.chart-container'));
-
-    if (!hasCharts && chartStyleControl.contains(document.activeElement)) {
-        if (commandInput) {
-            commandInput.focus();
-        } else if (sendBtn) {
-            sendBtn.focus();
-        }
+    const shortcuts = CHART_SHORTCUTS.filter(shortcut => CHART_PROMPT_SHORTCUT_IDS.includes(shortcut.id));
+    if (shortcuts.length === 0) {
+        return;
     }
 
-    chartStyleControl.classList.toggle('hidden', !hasCharts);
-    chartStyleControl.setAttribute('aria-hidden', hasCharts ? 'false' : 'true');
+    const existingPrompt = Array.from(messageList.querySelectorAll('.chart-suggestion')).find(node => {
+        const dataset = node instanceof HTMLElement ? node.dataset : undefined;
+        return dataset && dataset.table === tableName && dataset.reason === reason;
+    });
+    if (existingPrompt) {
+        existingPrompt.remove();
+    }
+
+    const container = document.createElement('div');
+    container.classList.add('message', 'ai-message', 'chart-suggestion');
+    container.dataset.table = tableName;
+    container.dataset.reason = reason;
+
+    const title = document.createElement('p');
+    title.classList.add('chart-suggestion-title');
+    title.textContent = reason === 'upload'
+        ? '要把这份数据快速生成图表吗？'
+        : '需要把最新结果转换成图表吗？';
+    container.appendChild(title);
+
+    const subtitle = document.createElement('p');
+    subtitle.classList.add('chart-suggestion-subtitle');
+    subtitle.textContent = `数据源：${tableName}`;
+    container.appendChild(subtitle);
+
+    const actions = document.createElement('div');
+    actions.classList.add('chart-suggestion-actions');
+
+    shortcuts.forEach(shortcut => {
+        const actionBtn = document.createElement('button');
+        actionBtn.type = 'button';
+        actionBtn.classList.add('chart-suggestion-btn');
+        actionBtn.textContent = shortcut.label;
+        actionBtn.addEventListener('click', () => {
+            container.remove();
+            handleChartShortcut(shortcut);
+        });
+        actions.appendChild(actionBtn);
+    });
+
+    const skipBtn = document.createElement('button');
+    skipBtn.type = 'button';
+    skipBtn.classList.add('chart-suggestion-dismiss');
+    skipBtn.textContent = '暂不生成';
+    skipBtn.addEventListener('click', () => {
+        container.remove();
+    });
+    actions.appendChild(skipBtn);
+
+    container.appendChild(actions);
+    messageList.appendChild(container);
+    messageList.scrollTop = messageList.scrollHeight;
 }
 

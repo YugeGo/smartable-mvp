@@ -20,14 +20,6 @@
             </div>
         </div>
         <div class="sidebar-scroll">
-            <section class="sidebar-section data-sources" aria-label="数据源" aria-hidden="true" hidden>
-                <header class="sidebar-section-header">
-                    <h2>数据源</h2>
-                </header>
-                <div id="data-source-list">
-                    <!-- Data sources will be dynamically added here -->
-                </div>
-            </section>
             <section id="data-preview" aria-live="polite" aria-label="当前数据预览" class="sidebar-section empty">
                 <header class="preview-header">
                     <h3 id="data-preview-title">当前数据源</h3>
@@ -36,7 +28,7 @@
                 <div id="data-preview-table" class="preview-table"></div>
                 <p id="data-preview-footnote" class="data-preview-footnote"></p>
             </section>
-            <section id="chart-shortcuts" class="sidebar-section sidebar-hidden" aria-label="图表快捷指令" aria-hidden="true">
+            <section id="chart-shortcuts" class="sidebar-section" aria-label="图表快捷指令">
                 <header class="shortcuts-header">
                     <h3>常用统计图</h3>
                     <span>一键生成常见图表类型</span>
@@ -49,13 +41,18 @@
         <div id="chat-container">
             <div id="top-loading-bar" aria-hidden="true"></div>
             <header id="chat-header" aria-label="当前会话">
-                <div class="chat-identity">
-                    <span class="chat-title">智表助手</span>
-                    <span class="chat-status">随时准备分析数据</span>
+                <div class="chat-heading">
+                    <div class="chat-identity">
+                        <span class="chat-title">智表助手</span>
+                        <span class="chat-status">随时准备分析数据</span>
+                    </div>
+                    <div class="chat-presence" aria-live="polite">
+                        <span class="chat-presence-indicator" aria-hidden="true"></span>
+                        <span class="chat-presence-text">在线</span>
+                    </div>
                 </div>
-                <div class="chat-presence" aria-live="polite">
-                    <span class="chat-presence-indicator" aria-hidden="true"></span>
-                    <span class="chat-presence-text">在线</span>
+                <div id="dataset-tray" class="dataset-tray" aria-live="polite" aria-label="已上传数据源">
+                    <span class="dataset-empty">尚未上传数据</span>
                 </div>
             </header>
             <section id="onboarding-banner" aria-label="快速开始指引">
@@ -110,14 +107,6 @@
                 <button id="upload-btn" class="input-btn">📎</button>
                 <input type="file" id="file-upload-input" style="display: none;">
                 <button id="paste-btn" class="input-btn" aria-label="粘贴数据">📋</button>
-                <div id="chart-style-control" class="chart-style-control hidden" aria-hidden="true">
-                    <label for="chart-style-select">图表配色</label>
-                    <select id="chart-style-select">
-                        <option value="classic">经典配色</option>
-                        <option value="vibrant">活力配色</option>
-                        <option value="pastel">柔和配色</option>
-                    </select>
-                </div>
                 <button id="dark-mode-toggle" class="input-btn" type="button" aria-label="切换到深色模式">🌙</button>
                 <textarea id="command-input" placeholder="请输入指令..."></textarea>
                 <button id="send-btn" class="input-btn">➢</button>
