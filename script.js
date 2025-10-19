@@ -57,6 +57,13 @@ const fileUploadInput = document.getElementById('file-upload-input');
 
 let currentCsvData = '';
 
+async function downloadAsExcel(csvString) {
+	const worksheet = XLSX.utils.csv_to_sheet(csvString);
+	const workbook = XLSX.utils.book_new();
+	XLSX.utils.book_append_sheet(workbook, worksheet, 'Processed Data');
+	XLSX.writeFile(workbook, '智表处理结果.xlsx');
+}
+
 async function addMessage(sender, content) {
 	if (!messageList) {
 		return null;
@@ -75,6 +82,14 @@ async function addMessage(sender, content) {
 
 	if (sender === 'ai' && typeof content === 'string' && looksLikeCsv(content)) {
 		renderCsvAsTable(content, bubble);
+		const actions = document.createElement('div');
+		actions.classList.add('action-buttons');
+		const downloadBtn = document.createElement('button');
+		downloadBtn.classList.add('action-btn');
+		downloadBtn.textContent = '📥 下载Excel';
+		downloadBtn.addEventListener('click', () => downloadAsExcel(content));
+		actions.appendChild(downloadBtn);
+		bubble.appendChild(actions);
 	} else if (typeof content === 'string') {
 		bubble.textContent = content;
 	} else if (content instanceof Node) {

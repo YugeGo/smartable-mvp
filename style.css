@@ -49,6 +49,13 @@
     *   设置 `cursor: pointer`。
 *   像之前一样，隐藏真实的 `#file-upload-input`。
 
+** 8. 下载按钮样式 **
+*   设计 `.action-buttons`：一个在消息列表上方的按钮组，用于下载文件。
+*   让它占据整个视口的顶部 (`100vh`)。
+*   使用Flexbox (`display: flex`, `justify-content: flex-end`) 来组织其子元素。
+*   添加一些间距 (gap)。
+*   每个按钮使用 `.action-btn` 样式。
+
 [指令结束]
 */
 
@@ -169,4 +176,28 @@ textarea#command-input:focus {
 
 #file-upload-input {
 	display: none;
+}
+
+.action-buttons {
+	margin-top: 0.75rem;
+	display: flex;
+	justify-content: flex-end;
+	gap: 0.5rem;
+}
+
+.action-btn {
+	padding: 0.35rem 0.9rem;
+	border: 1px solid #d6dce3;
+	border-radius: 999px;
+	background: #ffffff;
+	font-size: 0.9rem;
+	color: #2563eb;
+	cursor: pointer;
+	transition: background 0.2s ease, color 0.2s ease, border-color 0.2s ease;
+}
+
+.action-btn:hover {
+	background: #2563eb;
+	color: #ffffff;
+	border-color: #2563eb;
 }
