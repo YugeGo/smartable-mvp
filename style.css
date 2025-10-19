@@ -201,3 +201,10 @@ textarea#command-input:focus {
 	color: #ffffff;
 	border-color: #2563eb;
 }
+
+/* V1.5 新增: 图表容器样式 */
+.chart-container {
+    width: 100%;
+    height: 400px; /* 给图表一个固定的高度 */
+    margin-top: 1rem; /* 与表格保持一些间距 */
+}
