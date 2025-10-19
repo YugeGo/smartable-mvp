@@ -60,6 +60,7 @@
 */
 
 :root {
+:root {
 	--bg-gradient: radial-gradient(circle at 12% 20%, rgba(125, 211, 252, 0.55) 0%, rgba(125, 211, 252, 0) 45%), radial-gradient(circle at 82% 0%, rgba(196, 181, 253, 0.6) 0%, rgba(196, 181, 253, 0) 40%), linear-gradient(160deg, #f8fafc 0%, #e2e8f0 100%);
 	--glass-surface: rgba(255, 255, 255, 0.78);
 	--glass-border: rgba(148, 163, 184, 0.35);
@@ -73,6 +74,10 @@
 	--ai-surface: rgba(248, 250, 252, 0.92);
 	--user-gradient: linear-gradient(135deg, #60a5fa 0%, #c084fc 100%);
 	--surface-elevated: rgba(241, 245, 249, 0.9);
+}
+
+.sidebar-hidden {
+	display: none !important;
 }
 
 body.dark-mode {
@@ -124,6 +129,14 @@ body.dark-mode::after {
     gap: 1rem;
     backdrop-filter: blur(18px) saturate(150%);
     -webkit-backdrop-filter: blur(18px) saturate(150%);
+	height: 100vh;
+	overflow-y: auto;
+}
+
+@supports (height: 100dvh) {
+	#sidebar {
+		height: 100dvh;
+	}
 }
 
 #sidebar h2 {
@@ -1029,6 +1042,10 @@ body.dark-mode #input-area {
 	color: var(--text-muted);
 }
 
+body.dark-mode #chart-style-control label {
+	color: var(--text-muted);
+}
+
 #chart-style-select {
 	height: 3rem;
 	width: 100%;
@@ -1356,6 +1373,8 @@ thead th {
 		align-items: center;
 		flex-wrap: wrap;
 		gap: 1rem;
+		height: auto;
+		overflow: visible;
 	}
 
 	#sidebar h2 {

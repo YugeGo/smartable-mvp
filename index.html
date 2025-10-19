@@ -21,6 +21,21 @@
         <div id="data-source-list">
             <!-- Data sources will be dynamically added here -->
         </div>
+        <section id="data-preview" aria-live="polite" aria-label="当前数据预览" class="empty">
+            <header class="preview-header">
+                <h3 id="data-preview-title">当前数据源</h3>
+                <span class="preview-meta">实时展示当前选中数据的最近状态</span>
+            </header>
+            <div id="data-preview-table" class="preview-table"></div>
+            <p id="data-preview-footnote" class="data-preview-footnote"></p>
+        </section>
+        <section id="chart-shortcuts" class="sidebar-hidden" aria-label="图表快捷指令" aria-hidden="true">
+            <header class="shortcuts-header">
+                <h3>常用统计图</h3>
+                <span>一键生成常见图表类型</span>
+            </header>
+            <div id="chart-shortcut-list" role="list"></div>
+        </section>
     </aside>
     <main id="main-content">
         <div id="chat-container">
@@ -37,21 +52,6 @@
                 </div>
                 <button id="banner-close" type="button" aria-label="隐藏指引">✕</button>
             </section>
-                <section id="data-preview" aria-live="polite" aria-label="当前数据预览" class="empty">
-                    <header class="preview-header">
-                        <h3 id="data-preview-title">当前数据源</h3>
-                        <span class="preview-meta">实时展示当前选中数据的最近状态</span>
-                    </header>
-                    <div id="data-preview-table" class="preview-table"></div>
-                    <p id="data-preview-footnote" class="data-preview-footnote"></p>
-                </section>
-                <section id="chart-shortcuts" aria-label="图表快捷指令">
-                    <header class="shortcuts-header">
-                        <h3>常用统计图</h3>
-                        <span>一键生成常见图表类型</span>
-                    </header>
-                    <div id="chart-shortcut-list" role="list"></div>
-                </section>
             <div id="message-list"></div>
             <section id="data-input-panel" aria-hidden="true">
                 <header class="panel-header">
