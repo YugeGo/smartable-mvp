@@ -46,6 +46,8 @@ const dtTopKApply = document.getElementById('dt-topk-apply');
 const dtUndo = document.getElementById('dt-undo');
 const dtExportCsv = document.getElementById('dt-export-csv');
 const dtReset = document.getElementById('dt-reset');
+const dtDropEmpty = document.getElementById('dt-drop-empty');
+const dtDedupCol = document.getElementById('dt-dedup-col');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
@@ -1645,6 +1647,32 @@ function undoLastChange() {
 	saveSession();
 }
 
+// 删除当前列为空的行（空字符串或仅空白）
+function dropEmptyInCurrentColumn() {
+	const { headers, rows } = getActiveCsvRows();
+	if (headers.length === 0) return;
+	const idx = Number(dtColumnSelect?.value || 0);
+	const filtered = rows.filter(r => (r[idx] ?? '').trim() !== '');
+	writeActiveCsv(headers, filtered);
+}
+
+// 按当前列去重，保留首条
+function dedupByCurrentColumn() {
+	const { headers, rows } = getActiveCsvRows();
+	if (headers.length === 0) return;
+	const idx = Number(dtColumnSelect?.value || 0);
+	const seen = new Set();
+	const result = [];
+	for (const row of rows) {
+		const key = row[idx] ?? '';
+		if (!seen.has(key)) {
+			seen.add(key);
+			result.push(row);
+		}
+	}
+	writeActiveCsv(headers, result);
+}
+
 // 导出当前预览为CSV
 function exportCurrentPreviewCsv() {
 	if (!activeTableName || !workspace[activeTableName]) return;
@@ -1686,3 +1714,5 @@ if (dtRefreshColsBtn) dtRefreshColsBtn.addEventListener('click', () => {
 });
 if (dtExportCsv) dtExportCsv.addEventListener('click', exportCurrentPreviewCsv);
 if (dtReset) dtReset.addEventListener('click', resetToOriginal);
+if (dtDropEmpty) dtDropEmpty.addEventListener('click', dropEmptyInCurrentColumn);
+if (dtDedupCol) dtDedupCol.addEventListener('click', dedupByCurrentColumn);
