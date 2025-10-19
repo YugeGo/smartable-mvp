@@ -11,6 +11,12 @@ const onboardingBanner = document.getElementById('onboarding-banner');
 const bannerCloseBtn = document.getElementById('banner-close');
 const uploadStatus = document.getElementById('upload-status');
 const promptChips = document.querySelectorAll('.prompt-chip');
+const pasteBtn = document.getElementById('paste-btn');
+const dataInputPanel = document.getElementById('data-input-panel');
+const dataPasteArea = document.getElementById('data-paste-area');
+const dataPasteSubmit = document.getElementById('data-paste-submit');
+const dataPasteCancel = document.getElementById('data-paste-cancel');
+const dataPasteClose = document.getElementById('data-paste-close');
 
 const STORAGE_KEYS = {
     initialMessage: 'smartable:initial-message',
@@ -265,15 +271,22 @@ async function handleFileSelect(event) {
         const worksheet = workbook.Sheets[firstSheetName];
 
         const rawCsvString = XLSX.utils.sheet_to_csv(worksheet);
-        const cleanedLines = rawCsvString
-            .split('\n')
-            .map(line => line.replace(/,+$/, ''))
-            .filter(line => line.trim() !== '');
-        const finalCsvString = cleanedLines.join('\n');
+        const finalCsvString = sanitizeCsvString(rawCsvString);
+
+        if (!finalCsvString) {
+            throw new Error('Empty dataset after sanitizing');
+        }
+
+        const headers = extractHeaders(finalCsvString);
+        if (headers.length === 0) {
+            throw new Error('Missing header row');
+        }
+
+        const rowCount = Math.max(finalCsvString.split('\n').length - 1, 0);
 
         currentCsvData = finalCsvString;
         originalCsvData = finalCsvString;
-        updateUploadStatus(`✅ ${file.name} · ${formatFileSize(file.size)} 已准备就绪`, 'success');
+        updateUploadStatus(`✅ ${file.name} · ${formatFileSize(file.size)} · ${headers.length} 列 · ${rowCount} 行 已准备就绪`, 'success');
         addMessage('system', '文件上传成功，数据已准备就绪。现在您可以下达指令了。');
     } catch (error) {
         console.error('Failed to process file:', error);
@@ -296,10 +309,42 @@ commandInput.addEventListener('keydown', event => {
 uploadBtn.addEventListener('click', () => fileUploadInput.click());
 fileUploadInput.addEventListener('change', handleFileSelect);
 
+if (pasteBtn && dataInputPanel) {
+    pasteBtn.addEventListener('click', () => {
+        if (dataInputPanel.classList.contains('open')) {
+            closeDataInputPanel();
+        } else {
+            openDataInputPanel();
+        }
+    });
+}
+
+if (dataPasteSubmit) {
+    dataPasteSubmit.addEventListener('click', () => handlePasteSubmit());
+}
+
+if (dataPasteCancel) {
+    dataPasteCancel.addEventListener('click', () => {
+        if (dataPasteArea) {
+            dataPasteArea.value = '';
+            dataPasteArea.focus();
+        }
+    });
+}
+
+if (dataPasteClose) {
+    dataPasteClose.addEventListener('click', () => closeDataInputPanel());
+}
+
+document.addEventListener('keydown', event => {
+    if (event.key === 'Escape' && dataInputPanel && dataInputPanel.classList.contains('open')) {
+        closeDataInputPanel();
+    }
+});
+
 initializeOnboarding();
 
-// (We no longer need the dataPasteArea input listener as file upload is primary)
-// We also hide the textarea and its related elements from the new UI
+// 兼容旧版布局：如果仍存在传统数据输入列，则隐藏
 const dataInputColumn = document.getElementById('data-input-column');
 if (dataInputColumn) {
     dataInputColumn.style.display = 'none';
@@ -309,6 +354,9 @@ function setLoadingState(isLoading) {
     sendBtn.disabled = isLoading;
     commandInput.disabled = isLoading;
     uploadBtn.disabled = isLoading;
+    if (pasteBtn) {
+        pasteBtn.disabled = isLoading;
+    }
 
     if (isLoading) {
         sendBtn.classList.add('loading');
@@ -407,6 +455,73 @@ function initializeOnboarding() {
     });
 }
 
+function openDataInputPanel() {
+    if (!dataInputPanel) {
+        return;
+    }
+
+    dataInputPanel.classList.add('open');
+    dataInputPanel.setAttribute('aria-hidden', 'false');
+    if (pasteBtn) {
+        pasteBtn.classList.add('active');
+        pasteBtn.setAttribute('aria-pressed', 'true');
+    }
+
+    if (dataPasteArea) {
+        setTimeout(() => dataPasteArea.focus(), 0);
+    }
+}
+
+function closeDataInputPanel() {
+    if (!dataInputPanel) {
+        return;
+    }
+
+    dataInputPanel.classList.remove('open');
+    dataInputPanel.setAttribute('aria-hidden', 'true');
+    if (pasteBtn) {
+        pasteBtn.classList.remove('active');
+        pasteBtn.setAttribute('aria-pressed', 'false');
+    }
+}
+
+function handlePasteSubmit() {
+    if (!dataPasteArea) {
+        return;
+    }
+
+    const rawInput = dataPasteArea.value.trim();
+    if (!rawInput) {
+        updateUploadStatus('请先粘贴包含表头的数据，再点击导入。', 'error');
+        dataPasteArea.focus();
+        return;
+    }
+
+    const sanitized = sanitizeCsvString(rawInput);
+    if (!sanitized) {
+        updateUploadStatus('粘贴内容为空或格式不正确，请确认后重试。', 'error');
+        dataPasteArea.focus();
+        return;
+    }
+
+    const headers = extractHeaders(sanitized);
+    if (headers.length === 0) {
+        updateUploadStatus('未检测到表头，请确认每列使用逗号或制表符分隔。', 'error');
+        dataPasteArea.focus();
+        return;
+    }
+
+    const rowCount = Math.max(sanitized.split('\n').length - 1, 0);
+
+    currentCsvData = sanitized;
+    originalCsvData = sanitized;
+    updateUploadStatus(`✅ 粘贴数据 · ${headers.length} 列 · ${rowCount} 行 已准备就绪`, 'success');
+    addMessage('system', '粘贴数据成功，随时输入指令开始分析。');
+
+    dataPasteArea.value = '';
+    closeDataInputPanel();
+}
+
 function extractHeaders(csvString) {
     if (!csvString || typeof csvString !== 'string') {
         return [];
@@ -426,6 +541,24 @@ function extractHeaders(csvString) {
         .split(',')
         .map(header => header.trim())
         .filter(header => header.length > 0);
+}
+
+function sanitizeCsvString(rawCsvString) {
+    if (!rawCsvString || typeof rawCsvString !== 'string') {
+        return '';
+    }
+
+    const normalized = rawCsvString
+        .replace(/\r\n/g, '\n')
+        .replace(/\r/g, '\n')
+        .replace(/\t/g, ',');
+
+    const cleanedLines = normalized
+        .split('\n')
+        .map(line => line.replace(/,+$/, ''))
+        .filter(line => line.trim() !== '');
+
+    return cleanedLines.join('\n');
 }
 
 function findMissingColumns(expectedSchema, actualSchema) {

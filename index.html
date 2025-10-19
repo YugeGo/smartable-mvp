@@ -49,10 +49,25 @@ Create a conversational UI layout for a chat application.
             <button id="banner-close" type="button" aria-label="隐藏指引">✕</button>
         </section>
         <div id="message-list"></div>
+        <section id="data-input-panel" aria-hidden="true">
+            <header class="panel-header">
+                <div>
+                    <h3>粘贴数据</h3>
+                    <p>支持 CSV 或制表符分隔文本，记得包含表头列名。</p>
+                </div>
+                <button type="button" id="data-paste-close" aria-label="关闭粘贴面板">✕</button>
+            </header>
+            <textarea id="data-paste-area" placeholder="在此粘贴数据，每列使用逗号或制表符分隔..."></textarea>
+            <div class="panel-actions">
+                <button type="button" id="data-paste-cancel">清空</button>
+                <button type="button" id="data-paste-submit" class="primary">导入数据</button>
+            </div>
+        </section>
         <div id="upload-status" aria-live="polite" role="status"></div>
         <div id="input-area">
             <button id="upload-btn" class="input-btn">📎</button>
             <input type="file" id="file-upload-input" style="display: none;">
+            <button id="paste-btn" class="input-btn" aria-label="粘贴数据">📋</button>
             <textarea id="command-input" placeholder="请输入指令..."></textarea>
             <button id="send-btn" class="input-btn">➢</button>
         </div>
