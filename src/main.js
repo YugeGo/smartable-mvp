@@ -51,6 +51,7 @@ const darkModeToggle = document.getElementById('dark-mode-toggle');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
 const templateSelect = document.getElementById('template-select');
+const introChips = document.querySelectorAll('#product-intro .intro-chip');
 // Guide elements
 const guideSection = document.getElementById('guide-section');
 const guideOverlay = document.getElementById('guide-overlay');
@@ -493,6 +494,7 @@ initializeThemeControls();
 initializeChartShortcuts();
 initializeOnboarding();
 initializeGuide();
+initializeProductIntro();
 
 const dataInputColumn = document.getElementById('data-input-column');
 if (dataInputColumn) {
@@ -1466,6 +1468,28 @@ function initializeThemeControls() {
 			rerenderAllCharts();
 		});
 	}
+}
+
+function initializeProductIntro() {
+	if (!introChips || introChips.length === 0) return;
+	introChips.forEach(btn => {
+		btn.addEventListener('click', async () => {
+			const sample = btn.getAttribute('data-sample');
+			const templateId = btn.getAttribute('data-template');
+			try {
+				if (sample) {
+					await loadSampleDataset(sample);
+				}
+				const shortcut = CHART_SHORTCUTS.find(s => s.id === templateId);
+				if (shortcut) {
+					if (!activeTableName || !workspace[activeTableName]) return;
+					handleChartShortcut(shortcut);
+				}
+			} catch (e) {
+				console.warn('intro chip failed:', e);
+			}
+		});
+	});
 }
 
 function initializeChartShortcuts() {
