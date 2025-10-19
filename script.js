@@ -46,6 +46,51 @@ let activeTableName = '';
 let currentChartStyle = 'classic';
 let isDarkMode = false;
 
+var CHART_COLOR_PRESETS = Object.freeze({
+    classic: ['#2563eb', '#a855f7', '#14b8a6', '#f97316', '#facc15', '#ec4899'],
+    vibrant: ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'],
+    pastel: ['#93c5fd', '#d8b4fe', '#fbcfe8', '#fde68a', '#bbf7d0', '#fecaca']
+});
+
+var CHART_COLOR_PRESETS_DARK = Object.freeze({
+    classic: ['#93c5fd', '#c4b5fd', '#5eead4', '#fbbf24', '#fda4af', '#f87171'],
+    vibrant: ['#f87171', '#34d399', '#60a5fa', '#facc15', '#a78bfa', '#fb7185'],
+    pastel: ['#bfdbfe', '#e9d5ff', '#fecdd3', '#fef3c7', '#bbf7d0', '#f5d0fe']
+});
+
+var CHART_SHORTCUTS = [
+    {
+        id: 'line-trend',
+        label: '趋势折线图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份趋势折线图，自动识别最合适的时间或序号作为横轴，选择关键指标作为纵轴，并返回整理后的CSV及对应的ECharts配置。`
+    },
+    {
+        id: 'bar-compare',
+        label: '对比柱状图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份对比柱状图，挑选最适合的维度作为分组，展示主要度量的对比，同时输出CSV和ECharts配置。`
+    },
+    {
+        id: 'pie-share',
+        label: '占比饼图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份占比饼图，选择有代表性的分类字段计算占比，输出整理后的CSV与ECharts配置。`
+    },
+    {
+        id: 'stacked-area',
+        label: '堆叠面积图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份堆叠面积图，用于展示多个系列随时间的累计趋势，并提供CSV和ECharts配置。`
+    },
+    {
+        id: 'scatter-relation',
+        label: '散点关系图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份散点图，自动选取两个合适的度量字段分析它们的关系，并输出CSV及ECharts配置。`
+    },
+    {
+        id: 'radar-profile',
+        label: '雷达分布图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份雷达图，挑选可对比的多个指标构成维度，展示各类别的特征，同时返回CSV和ECharts配置。`
+    }
+];
+
 // --- 3. Core Functions ---
 
 /**
@@ -670,51 +715,6 @@ function findMissingColumns(expectedSchema, actualSchema) {
     const actualSet = new Set(Array.isArray(actualSchema) ? actualSchema : []);
     return expectedSchema.filter(column => !actualSet.has(column));
 }
-
-const CHART_COLOR_PRESETS = {
-    classic: ['#2563eb', '#a855f7', '#14b8a6', '#f97316', '#facc15', '#ec4899'],
-    vibrant: ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'],
-    pastel: ['#93c5fd', '#d8b4fe', '#fbcfe8', '#fde68a', '#bbf7d0', '#fecaca']
-};
-
-const CHART_COLOR_PRESETS_DARK = {
-    classic: ['#93c5fd', '#c4b5fd', '#5eead4', '#fbbf24', '#fda4af', '#f87171'],
-    vibrant: ['#f87171', '#34d399', '#60a5fa', '#facc15', '#a78bfa', '#fb7185'],
-    pastel: ['#bfdbfe', '#e9d5ff', '#fecdd3', '#fef3c7', '#bbf7d0', '#f5d0fe']
-};
-
-const CHART_SHORTCUTS = [
-    {
-        id: 'line-trend',
-        label: '趋势折线图',
-        prompt: tableName => `请基于数据源「${tableName}」生成一份趋势折线图，自动识别最合适的时间或序号作为横轴，选择关键指标作为纵轴，并返回整理后的CSV及对应的ECharts配置。`
-    },
-    {
-        id: 'bar-compare',
-        label: '对比柱状图',
-        prompt: tableName => `请基于数据源「${tableName}」生成一份对比柱状图，挑选最适合的维度作为分组，展示主要度量的对比，同时输出CSV和ECharts配置。`
-    },
-    {
-        id: 'pie-share',
-        label: '占比饼图',
-        prompt: tableName => `请基于数据源「${tableName}」生成一份占比饼图，选择有代表性的分类字段计算占比，输出整理后的CSV与ECharts配置。`
-    },
-    {
-        id: 'stacked-area',
-        label: '堆叠面积图',
-        prompt: tableName => `请基于数据源「${tableName}」生成一份堆叠面积图，用于展示多个系列随时间的累计趋势，并提供CSV和ECharts配置。`
-    },
-    {
-        id: 'scatter-relation',
-        label: '散点关系图',
-        prompt: tableName => `请基于数据源「${tableName}」生成一份散点图，自动选取两个合适的度量字段分析它们的关系，并输出CSV及ECharts配置。`
-    },
-    {
-        id: 'radar-profile',
-        label: '雷达分布图',
-        prompt: tableName => `请基于数据源「${tableName}」生成一份雷达图，挑选可对比的多个指标构成维度，展示各类别的特征，同时返回CSV和ECharts配置。`
-    }
-];
 
 function enhanceChartOption(option, container) {
     if (!option) {
