@@ -185,7 +185,7 @@ async function handleFileSelect(event) {
         const finalCsvString = cleanedLines.join('\n');
         
         currentCsvData = finalCsvString; // Update state
-        dataPasteArea.value = finalCsvString; // Also show in (now hidden) textarea
+
         addMessage('system', '文件上传成功，数据已准备就绪。现在您可以下达指令了。');
 
     } catch (error) {
