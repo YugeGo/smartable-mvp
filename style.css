@@ -525,45 +525,125 @@ body.dark-mode #chat-header {
 
 #onboarding-banner {
 	display: flex;
-	align-items: flex-start;
-	justify-content: space-between;
+	flex-direction: column;
 	gap: 1.5rem;
-	margin-bottom: 1.75rem;
-	padding: 1.65rem 1.75rem;
+	margin-bottom: 1.5rem;
+	padding: 1.6rem 1.8rem 1.45rem;
 	border-radius: 22px;
 	background: var(--surface-elevated);
 	border: 1px solid rgba(148, 163, 184, 0.3);
-	box-shadow: 0 20px 46px rgba(148, 163, 184, 0.28);
+	box-shadow: 0 18px 40px rgba(148, 163, 184, 0.26);
 }
 
 body.dark-mode #onboarding-banner {
 	border-color: rgba(148, 163, 184, 0.28);
-	box-shadow: 0 20px 46px rgba(2, 6, 23, 0.6);
+	box-shadow: 0 18px 40px rgba(2, 6, 23, 0.58);
 }
 
 #onboarding-banner.hidden {
 	display: none;
 }
 
-#onboarding-banner h2 {
+.onboarding-primary {
+	display: flex;
+	align-items: center;
+	gap: 1.1rem;
+}
+
+.onboarding-icon {
+	width: 54px;
+	height: 54px;
+	border-radius: 18px;
+	background: rgba(37, 99, 235, 0.14);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 1.8rem;
+	box-shadow: inset 0 0 0 1px rgba(37, 99, 235, 0.18);
+}
+
+body.dark-mode .onboarding-icon {
+	background: rgba(37, 99, 235, 0.22);
+	box-shadow: inset 0 0 0 1px rgba(96, 165, 250, 0.32);
+}
+
+.onboarding-copy h2 {
 	margin: 0;
 	font-family: 'Space Grotesk', 'Inter', sans-serif;
 	font-weight: 500;
-	font-size: 1.4rem;
+	font-size: 1.35rem;
 }
 
-#onboarding-banner p {
-	margin: 0.75rem 0 0;
+.onboarding-copy p {
+	margin: 0.4rem 0 0;
 	color: var(--text-muted);
 	font-size: 0.95rem;
 	line-height: 1.6;
 }
 
-.prompt-chips {
+.onboarding-steps {
+	list-style: none;
+	margin: 0;
+	padding: 0;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 1rem;
+}
+
+.onboarding-steps li {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.75rem;
+	flex: 1 1 240px;
+	border-radius: 18px;
+	padding: 0.9rem 1.1rem;
+	background: rgba(248, 250, 252, 0.92);
+	border: 1px solid rgba(148, 163, 184, 0.26);
+	box-shadow: 0 12px 24px rgba(148, 163, 184, 0.18);
+}
+
+body.dark-mode .onboarding-steps li {
+	background: rgba(30, 41, 59, 0.9);
+	border-color: rgba(148, 163, 184, 0.3);
+	box-shadow: 0 12px 24px rgba(2, 6, 23, 0.5);
+}
+
+.step-number {
+	min-width: 32px;
+	height: 32px;
+	border-radius: 12px;
+	background: rgba(37, 99, 235, 0.14);
+	color: var(--accent-strong);
+	font-weight: 600;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+}
+
+body.dark-mode .step-number {
+	background: rgba(37, 99, 235, 0.28);
+	color: #e0f2fe;
+}
+
+.step-copy {
+	display: flex;
+	flex-direction: column;
+	gap: 0.25rem;
+}
+
+.step-copy strong {
+	font-size: 0.95rem;
+}
+
+.step-copy span {
+	font-size: 0.85rem;
+	color: var(--text-muted);
+}
+
+.onboarding-prompts {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 0.75rem;
-	margin-top: 1.2rem;
 }
 
 .prompt-chip {
@@ -597,31 +677,33 @@ body.dark-mode .prompt-chip:hover {
 	color: #f0f9ff;
 }
 
-#banner-close {
-	border: none;
-	background: rgba(15, 23, 42, 0.06);
-	color: var(--text-muted);
-	border-radius: 50%;
-	width: 36px;
-	height: 36px;
-	cursor: pointer;
-	font-size: 1.1rem;
-	line-height: 1;
-	transition: var(--transition);
-	flex-shrink: 0;
-}
-
-#banner-close:hover {
-	background: rgba(37, 99, 235, 0.12);
+#banner-close.onboarding-close {
+	align-self: flex-start;
+	padding: 0.55rem 1.1rem;
+	border-radius: 999px;
+	border: 1px solid rgba(148, 163, 184, 0.32);
+	background: rgba(248, 250, 252, 0.88);
 	color: var(--accent-strong);
+	font-size: 0.85rem;
+	font-weight: 600;
+	cursor: pointer;
+	transition: var(--transition);
 }
 
-body.dark-mode #banner-close {
-	background: rgba(15, 23, 42, 0.3);
+#banner-close.onboarding-close:hover {
+	background: rgba(219, 234, 254, 0.92);
+	border-color: rgba(37, 99, 235, 0.38);
 }
 
-body.dark-mode #banner-close:hover {
-	background: rgba(37, 99, 235, 0.25);
+body.dark-mode #banner-close.onboarding-close {
+	background: rgba(30, 41, 59, 0.92);
+	border-color: rgba(148, 163, 184, 0.28);
+	color: #e2e8f0;
+}
+
+body.dark-mode #banner-close.onboarding-close:hover {
+	background: rgba(37, 99, 235, 0.28);
+	border-color: rgba(96, 165, 250, 0.45);
 }
 
 #message-list {
@@ -1589,12 +1671,37 @@ thead th {
 	}
 
 	#onboarding-banner {
-		flex-direction: column;
-		gap: 1rem;
+		padding: 1.25rem 1.3rem 1.15rem;
 	}
 
-	#banner-close {
-		align-self: flex-end;
+	.onboarding-primary {
+		flex-direction: column;
+		align-items: flex-start;
+		gap: 0.85rem;
+	}
+
+	.onboarding-steps {
+		flex-direction: column;
+	}
+
+	.onboarding-steps li {
+		flex: 1 1 auto;
+		width: 100%;
+	}
+
+	.onboarding-prompts {
+		gap: 0.6rem;
+	}
+
+	#banner-close.onboarding-close {
+		align-self: stretch;
+		text-align: center;
+	}
+
+	.onboarding-icon {
+		width: 48px;
+		height: 48px;
+		font-size: 1.5rem;
 	}
 
 	.message {
