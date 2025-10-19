@@ -66,3 +66,31 @@ header {
 #copy-btn:hover {
     background-color: #166bc1;
 }
+/* V1.1 Table and UI Styles */
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 1em;
+    font-size: 0.9em;
+}
+
+th, td {
+    border-bottom: 1px solid #ddd;
+    padding: 8px 12px;
+    text-align: left;
+}
+
+thead th {
+    font-weight: 600;
+    background-color: #f9f9f9;
+}
+
+tbody tr:hover {
+    background-color: #f5f5f5;
+}
+
+#result-display p {
+    margin: 0.5em 0;
+    color: #555;
+}
