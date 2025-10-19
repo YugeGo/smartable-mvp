@@ -2104,3 +2104,58 @@ body.dark-mode .chart-shortcut {
 	color: #e0f2fe;
 	box-shadow: 0 12px 24px rgba(2, 6, 23, 0.5);
 }
+
+/* 使用指南 - 覆盖层与模态 */
+.guide-overlay[hidden] { display: none; }
+.guide-overlay {
+	position: fixed;
+	inset: 0;
+	z-index: 9999;
+}
+.guide-backdrop {
+	position: absolute;
+	inset: 0;
+	background: rgba(15, 23, 42, 0.45);
+	backdrop-filter: blur(2px);
+}
+.guide-modal {
+	position: relative;
+	margin: 10vh auto 0;
+	max-width: 640px;
+	background: rgba(248, 250, 252, 0.96);
+	border: 1px solid rgba(148, 163, 184, 0.35);
+	border-radius: 16px;
+	box-shadow: 0 24px 48px rgba(148, 163, 184, 0.35);
+	padding: 1rem 1rem 0.9rem;
+}
+body.dark-mode .guide-modal {
+	background: rgba(17, 24, 39, 0.96);
+	border-color: rgba(148, 163, 184, 0.35);
+}
+.guide-header { display: flex; align-items: center; justify-content: space-between; }
+.guide-step-title { font-weight: 600; margin: 0.2rem 0; }
+.guide-step-desc { margin: 0.2rem 0 0.6rem; color: var(--text-muted); }
+.guide-footer { display: flex; align-items: center; justify-content: space-between; gap: .5rem; }
+.guide-actions { display: inline-flex; gap: .5rem; }
+.guide-btn { border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(248, 250, 252, 0.95); color: var(--text-primary); border-radius: 12px; padding: .5rem .9rem; cursor: pointer; }
+.guide-btn.primary { background: var(--accent); border-color: var(--accent-strong); color: #fff; }
+.guide-close { border: 1px solid rgba(148, 163, 184, 0.35); background: rgba(248, 250, 252, 0.95); color: var(--text-primary); border-radius: 10px; padding: .35rem .5rem; cursor: pointer; }
+.guide-progress { color: var(--text-muted); font-size: .9rem; }
+
+/* 使用指南 - 元素脉冲高亮 */
+.pulse-highlight {
+	position: relative;
+	outline: 2px solid rgba(37, 99, 235, 0.65);
+	outline-offset: 2px;
+	border-radius: 12px;
+	animation: pulse 1.4s ease-in-out infinite;
+}
+@keyframes pulse {
+	0% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.4); }
+	70% { box-shadow: 0 0 0 10px rgba(37, 99, 235, 0.0); }
+	100% { box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.0); }
+}
+
+/* 侧栏“使用指南”板块细节 */
+#guide-section .guide-controls { display: flex; gap: .5rem; align-items: center; }
+#guide-section .guide-start { border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.35); padding: .45rem .8rem; background: rgba(248, 250, 252, 0.95); cursor: pointer; }

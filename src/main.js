@@ -51,6 +51,17 @@ const darkModeToggle = document.getElementById('dark-mode-toggle');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
 const templateSelect = document.getElementById('template-select');
+// Guide elements
+const guideSection = document.getElementById('guide-section');
+const guideOverlay = document.getElementById('guide-overlay');
+const guideScenario = document.getElementById('guide-scenario');
+const guideStartBtn = document.getElementById('guide-start-btn');
+const guideCloseBtn = document.getElementById('guide-close');
+const guidePrevBtn = document.getElementById('guide-prev');
+const guideNextBtn = document.getElementById('guide-next');
+const guideStepTitle = document.getElementById('guide-step-title');
+const guideStepDesc = document.getElementById('guide-step-desc');
+const guideProgress = document.getElementById('guide-progress');
 
 const STORAGE_KEYS = {
 	initialMessage: 'smartable:initial-message',
@@ -481,6 +492,7 @@ document.addEventListener('keydown', event => {
 initializeThemeControls();
 initializeChartShortcuts();
 initializeOnboarding();
+initializeGuide();
 
 const dataInputColumn = document.getElementById('data-input-column');
 if (dataInputColumn) {
@@ -514,6 +526,127 @@ function setLoadingState(isLoading) {
 	}
 
 	syncChartShortcutButtons(isLoading);
+}
+
+// --- Guide: 场景式引导 ---
+const GUIDE_SCENARIOS = {
+	'quick-start': {
+		title: '一分钟上手',
+		steps: [
+			{
+				title: '载入一份样例数据',
+				desc: '点击任意“一键体验”按钮，马上获得一份示例数据，我们用它来快速演示。',
+				target: '.onboarding-demos',
+				action: null
+			},
+			{
+				title: '查看数据预览',
+				desc: '样例数据载入后，这里会展示表头与前几行。你可以选择列来进行筛选/排序/Top-K。',
+				target: '#data-preview',
+				action: null
+			},
+			{
+				title: '一键生成图表',
+				desc: '在“常用统计图”选择一种图表类型，我们会自动给出结果表与图表，且支持下载图片。',
+				target: '#chart-shortcuts',
+				action: () => {
+					// 若有活动表，触发一个模板生成（例如趋势折线图）
+					if (activeTableName && workspace[activeTableName]) {
+						const shortcut = CHART_SHORTCUTS.find(s => s.id === 'line-trend');
+						if (shortcut) handleChartShortcut(shortcut);
+					}
+				}
+			},
+			{
+				title: '下载结果/图片',
+				desc: '在 AI 返回的消息卡片底部可以下载表格Excel与图表图片，用于汇报与存档。',
+				target: '#message-list',
+				action: null
+			}
+		]
+	}
+};
+
+let currentGuide = { key: '', stepIndex: 0 };
+
+function initializeGuide() {
+	if (!guideSection) return;
+	if (guideStartBtn) guideStartBtn.addEventListener('click', startGuide);
+	if (guideCloseBtn) guideCloseBtn.addEventListener('click', closeGuide);
+	if (guidePrevBtn) guidePrevBtn.addEventListener('click', () => moveGuide(-1));
+	if (guideNextBtn) guideNextBtn.addEventListener('click', () => moveGuide(1));
+}
+
+function startGuide() {
+	const key = guideScenario?.value || 'quick-start';
+	const scenario = GUIDE_SCENARIOS[key];
+	if (!scenario) return;
+	currentGuide = { key, stepIndex: 0 };
+	openGuideOverlay();
+	applyGuideStep();
+}
+
+function openGuideOverlay() {
+	if (!guideOverlay) return;
+	guideOverlay.hidden = false;
+	guideOverlay.setAttribute('aria-hidden', 'false');
+}
+
+function closeGuide() {
+	if (!guideOverlay) return;
+	removeGuideHighlight();
+	guideOverlay.hidden = true;
+	guideOverlay.setAttribute('aria-hidden', 'true');
+}
+
+function moveGuide(direction) {
+	const scenario = GUIDE_SCENARIOS[currentGuide.key];
+	if (!scenario) return;
+	const max = scenario.steps.length - 1;
+	let idx = currentGuide.stepIndex + direction;
+	idx = Math.max(0, Math.min(max, idx));
+	currentGuide.stepIndex = idx;
+	applyGuideStep();
+}
+
+function applyGuideStep() {
+	const scenario = GUIDE_SCENARIOS[currentGuide.key];
+	if (!scenario) return;
+	const step = scenario.steps[currentGuide.stepIndex];
+	if (!step) return;
+
+	if (guideStepTitle) guideStepTitle.textContent = step.title || '';
+	if (guideStepDesc) guideStepDesc.textContent = step.desc || '';
+	if (guideProgress) guideProgress.textContent = `${currentGuide.stepIndex + 1} / ${scenario.steps.length}`;
+
+	// 高亮目标
+	removeGuideHighlight();
+	if (step.target) highlightTarget(step.target);
+
+	// 执行动作（如触发模板）
+	if (typeof step.action === 'function') {
+		try { step.action(); } catch (e) { console.warn('Guide action failed:', e); }
+	}
+
+	// 按钮状态
+	if (guidePrevBtn) guidePrevBtn.disabled = currentGuide.stepIndex === 0;
+	if (guideNextBtn) guideNextBtn.textContent = currentGuide.stepIndex === scenario.steps.length - 1 ? '完成' : '下一步';
+	if (guideNextBtn && currentGuide.stepIndex === scenario.steps.length - 1) {
+		guideNextBtn.onclick = () => closeGuide();
+	} else if (guideNextBtn) {
+		guideNextBtn.onclick = () => moveGuide(1);
+	}
+}
+
+function highlightTarget(selector) {
+	const el = document.querySelector(selector);
+	if (!el) return;
+	try { el.scrollIntoView({ behavior: 'smooth', block: 'center' }); } catch (_) {}
+	el.classList.add('pulse-highlight');
+}
+
+function removeGuideHighlight() {
+	document.querySelectorAll('.pulse-highlight').forEach(el => el.classList.remove('pulse-highlight'));
 }
 
 function createSkeletonMessage() {

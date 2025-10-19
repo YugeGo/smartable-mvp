@@ -47,6 +47,19 @@
                 <div id="data-preview-table" class="preview-table"></div>
                 <p id="data-preview-footnote" class="data-preview-footnote"></p>
             </section>
+            <section id="guide-section" class="sidebar-section" aria-label="使用指南">
+                <header class="sidebar-section-header">
+                    <h2>使用指南</h2>
+                </header>
+                <div class="guide-controls">
+                    <label for="guide-scenario">选择场景：</label>
+                    <select id="guide-scenario" aria-label="选择引导场景">
+                        <option value="quick-start">一分钟上手</option>
+                    </select>
+                    <button type="button" id="guide-start-btn" class="guide-start">开始引导</button>
+                </div>
+                <p class="guide-note">按照场景一步步带你完成关键操作。</p>
+            </section>
             <section id="chart-shortcuts" class="sidebar-section" aria-label="图表快捷指令">
                 <header class="shortcuts-header">
                     <h3>常用统计图</h3>
@@ -149,5 +162,26 @@
             </div>
         </div>
     </main>
+    <!-- 引导覆盖层 -->
+    <div id="guide-overlay" class="guide-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="guide-title">
+        <div class="guide-backdrop" aria-hidden="true"></div>
+        <div class="guide-modal" role="document">
+            <div class="guide-header">
+                <h3 id="guide-title">使用指南</h3>
+                <button type="button" id="guide-close" class="guide-close" aria-label="关闭引导">✕</button>
+            </div>
+            <div class="guide-body">
+                <p id="guide-step-title" class="guide-step-title"></p>
+                <p id="guide-step-desc" class="guide-step-desc"></p>
+            </div>
+            <div class="guide-footer">
+                <span id="guide-progress" class="guide-progress">1 / 1</span>
+                <div class="guide-actions">
+                    <button type="button" id="guide-prev" class="guide-btn" disabled>上一步</button>
+                    <button type="button" id="guide-next" class="guide-btn primary">下一步</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </body>
 </html>
