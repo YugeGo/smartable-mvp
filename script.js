@@ -1,253 +1,215 @@
-/*
-[Instruction Start]
+// script.js - V1.4 (Final Version with Download Functionality)
 
-** 1. Get All Necessary DOM Elements **
-*   Get references to: `message-list`, `command-input`, `send-btn`, `upload-btn`, and the hidden `file-upload-input`.
-
-** 2. State Management Variable **
-*   Create a `let` variable `currentCsvData` initialized to an empty string.
-
-** 3. Core Function: `addMessage` **
-*   Create a new async function `addMessage(sender, content)`.
-*   Inside, create a `div` for the message bubble. Add the `message` class.
-*   Based on the `sender` ('user', 'ai', 'system'), add the corresponding class (`user-message`, `ai-message`, `system-message`).
-*   If `sender` is 'ai' and the `content` is a string that looks like CSV, call our existing `renderCsvAsTable` function to turn it into a table element, and append that table to the message bubble. Otherwise, just set the `textContent` of the bubble.
-*   Append the new message bubble to the `message-list`.
-*   Scroll the `message-list` to the bottom to show the newest message.
-
-** 4. Link Upload Button to Hidden Input **
-*   Add a 'click' event listener to `upload-btn` that programmatically clicks the hidden `file-upload-input`.
-
-** 5. File Upload Handler (Re-implemented) **
-*   Reuse our previous file handling logic. Add a 'change' listener to `file-upload-input`.
-*   When a file is selected, read it using SheetJS.
-*   Once the `finalCsvString` is generated:
-    *   Update the state: `currentCsvData = finalCsvString;`
-    *   Add a system message to the chat confirming the upload: `addMessage('system', '文件上传成功，数据已准备就绪。');`
-
-** 6. Send Button Handler: `handleSendMessage` **
-*   Create an async function `handleSendMessage`.
-*   Get the command from `command-input`. If it's empty, return.
-*   If `currentCsvData` is empty, show an alert asking the user to upload or paste data first, and return.
-*   Add the user's command to the UI: `addMessage('user', userCommand);`.
-*   Clear the `command-input` and disable it.
-*   Show a "typing" indicator for the AI.
-*   Call the backend API using `fetch`, sending `currentCsvData` and the `userCommand`.
-*   When the response is received:
-    *   Remove the "typing" indicator.
-    *   Get the `newCsvResult` from the AI.
-    *   Add the AI's response to the UI as a new message: `addMessage('ai', newCsvResult);`.
-    *   Update the state with the new result: `currentCsvData = newCsvResult;`.
-    *   Re-enable the input.
-
-** 7. Attach Final Event Listeners **
-*   Add a 'click' event listener to `send-btn` that calls `handleSendMessage`.
-*   Add a 'keydown' listener to `command-input` that checks if the user pressed 'Enter' (without Shift) and calls `handleSendMessage` if they did.
-
-** 8. Helper Function: `renderCsvAsTable` **
-*   Copy our previously created `renderCsvAsTable` function into this new file, as it will be needed by `addMessage`.
-
-[Instruction End]
-*/
+// --- 1. DOM Element References ---
 const messageList = document.getElementById('message-list');
 const commandInput = document.getElementById('command-input');
 const sendBtn = document.getElementById('send-btn');
 const uploadBtn = document.getElementById('upload-btn');
 const fileUploadInput = document.getElementById('file-upload-input');
 
-let currentCsvData = '';
+// --- 2. State Management ---
+let currentCsvData = ''; // Holds the most recent CSV data state for multi-turn conversation
 
-async function downloadAsExcel(csvString) {
-	const worksheet = XLSX.utils.csv_to_sheet(csvString);
-	const workbook = XLSX.utils.book_new();
-	XLSX.utils.book_append_sheet(workbook, worksheet, 'Processed Data');
-	XLSX.writeFile(workbook, '智表处理结果.xlsx');
-}
+// --- 3. Core Functions ---
 
-async function addMessage(sender, content) {
-	if (!messageList) {
-		return null;
-	}
-
-	const bubble = document.createElement('div');
-	bubble.classList.add('message');
-
-	const senderClasses = {
-		user: 'user-message',
-		ai: 'ai-message',
-		system: 'system-message'
-	};
-	const senderClass = senderClasses[sender] ?? 'system-message';
-	bubble.classList.add(senderClass);
-
-	if (sender === 'ai' && typeof content === 'string' && looksLikeCsv(content)) {
-		renderCsvAsTable(content, bubble);
-		const actions = document.createElement('div');
-		actions.classList.add('action-buttons');
-		const downloadBtn = document.createElement('button');
-		downloadBtn.classList.add('action-btn');
-		downloadBtn.textContent = '📥 下载Excel';
-		downloadBtn.addEventListener('click', () => downloadAsExcel(content));
-		actions.appendChild(downloadBtn);
-		bubble.appendChild(actions);
-	} else if (typeof content === 'string') {
-		bubble.textContent = content;
-	} else if (content instanceof Node) {
-		bubble.appendChild(content);
-	} else {
-		bubble.textContent = String(content ?? '');
-	}
-
-	messageList.appendChild(bubble);
-	messageList.scrollTop = messageList.scrollHeight;
-	return bubble;
-}
-
-function looksLikeCsv(text) {
-	const trimmed = text.trim();
-	if (!trimmed.includes(',') || !trimmed.includes('\n')) {
-		return false;
-	}
-	const [headerLine] = trimmed.split('\n');
-	return headerLine.split(',').length > 1;
-}
-
+/**
+ * Renders a CSV string as a proper HTML table inside a container.
+ * @param {string} csvString The CSV data string.
+ * @param {HTMLElement} containerElement The element to render the table into.
+ */
 function renderCsvAsTable(csvString, containerElement) {
-	containerElement.innerHTML = '';
-	try {
-		const rows = csvString.trim().split('\n');
-		if (!rows.length || rows[0].trim() === '') {
-			containerElement.textContent = csvString;
-			return;
-		}
+    containerElement.innerHTML = ''; // Clear previous content
+    try {
+        const rows = csvString.trim().split('\n');
+        if (rows.length === 0 || rows[0].trim() === '') {
+            containerElement.textContent = csvString;
+            return;
+        }
 
-		const table = document.createElement('table');
-		const thead = document.createElement('thead');
-		const tbody = document.createElement('tbody');
+        const table = document.createElement('table');
+        const thead = document.createElement('thead');
+        const tbody = document.createElement('tbody');
 
-		const headerRow = document.createElement('tr');
-		rows[0].split(',').forEach((headerText) => {
-			const th = document.createElement('th');
-			th.textContent = headerText.trim();
-			headerRow.appendChild(th);
-		});
-		thead.appendChild(headerRow);
+        const headerRow = document.createElement('tr');
+        const headers = rows[0].split(',');
+        headers.forEach(headerText => {
+            const th = document.createElement('th');
+            th.textContent = headerText.trim();
+            headerRow.appendChild(th);
+        });
+        thead.appendChild(headerRow);
 
-		for (let i = 1; i < rows.length; i += 1) {
-			const dataRow = document.createElement('tr');
-			rows[i].split(',').forEach((cellText) => {
-				const td = document.createElement('td');
-				td.textContent = cellText.trim();
-				dataRow.appendChild(td);
-			});
-			tbody.appendChild(dataRow);
-		}
+        for (let i = 1; i < rows.length; i++) {
+            const dataRow = document.createElement('tr');
+            const cells = rows[i].split(',');
+            cells.forEach(cellText => {
+                const td = document.createElement('td');
+                td.textContent = cellText.trim();
+                dataRow.appendChild(td);
+            });
+            tbody.appendChild(dataRow);
+        }
 
-		table.append(thead, tbody);
-		containerElement.appendChild(table);
-	} catch (error) {
-		console.error('Failed to render CSV:', error);
-		containerElement.textContent = csvString;
-	}
+        table.appendChild(thead);
+        table.appendChild(tbody);
+        containerElement.appendChild(table);
+    } catch (error) {
+        console.error("Failed to render CSV:", error);
+        containerElement.textContent = csvString; // Fallback
+    }
 }
 
-if (uploadBtn && fileUploadInput) {
-	uploadBtn.addEventListener('click', () => fileUploadInput.click());
+/**
+ * Dynamically adds a new message bubble to the chat UI.
+ * @param {('user'|'ai'|'system')} sender The sender of the message.
+ * @param {string} content The content of the message (can be text or CSV).
+ */
+function addMessage(sender, content) {
+    const messageBubble = document.createElement('div');
+    messageBubble.classList.add('message', `${sender}-message`);
+
+    if (sender === 'ai') {
+        // AI messages contain the results, which should be a table
+        const tableContainer = document.createElement('div');
+        renderCsvAsTable(content, tableContainer);
+        messageBubble.appendChild(tableContainer);
+
+        // --- V1.4 NEW: Add Action Buttons ---
+        const actionsContainer = document.createElement('div');
+        actionsContainer.classList.add('action-buttons');
+
+        const downloadBtn = document.createElement('button');
+        downloadBtn.classList.add('action-btn');
+        downloadBtn.textContent = '📥 下载Excel';
+        downloadBtn.addEventListener('click', () => downloadAsExcel(content));
+
+        actionsContainer.appendChild(downloadBtn);
+        messageBubble.appendChild(actionsContainer);
+
+    } else {
+        // User and System messages are plain text
+        messageBubble.textContent = content;
+    }
+
+    messageList.appendChild(messageBubble);
+    messageList.scrollTop = messageList.scrollHeight; // Auto-scroll to bottom
 }
 
-if (fileUploadInput) {
-	fileUploadInput.addEventListener('change', async (event) => {
-		const file = event.target.files?.[0];
-		if (!file) {
-			return;
-		}
-
-		try {
-			const data = await file.arrayBuffer();
-			const workbook = XLSX.read(data, { type: 'array' });
-			const firstSheetName = workbook.SheetNames?.[0];
-			if (!firstSheetName) {
-				throw new Error('未找到工作表');
-			}
-
-			const worksheet = workbook.Sheets[firstSheetName];
-			const rawCsv = XLSX.utils.sheet_to_csv(worksheet, { skipHidden: true });
-			const cleanedLines = rawCsv
-				.split('\n')
-				.map((line) => line.replace(/,+$/, '').trimEnd())
-				.filter((line) => line.trim() !== '');
-			const finalCsvString = cleanedLines.join('\n').trim();
-
-			currentCsvData = finalCsvString;
-			await addMessage('system', '文件上传成功，数据已准备就绪。');
-		} catch (error) {
-			console.error('Failed to process file:', error);
-			await addMessage('system', '文件读取失败，请确保文件格式正确！');
-		} finally {
-			event.target.value = '';
-		}
-	});
+/**
+ * V1.4 NEW: Converts a CSV string to an .xlsx file and triggers download.
+ * @param {string} csvString The CSV data to convert.
+ */
+async function downloadAsExcel(csvString) {
+    try {
+        const worksheet = XLSX.utils.csv_to_sheet(csvString);
+        const workbook = XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(workbook, worksheet, "处理结果");
+        XLSX.writeFile(workbook, "智表处理结果.xlsx");
+    } catch(error) {
+        console.error("Failed to download Excel file:", error);
+        alert("下载失败，请检查控制台错误。");
+    }
 }
 
+
+/**
+ * Handles the logic for sending a message to the backend.
+ */
 async function handleSendMessage() {
-	if (!commandInput) {
-		return;
-	}
+    const userCommand = commandInput.value.trim();
+    if (!userCommand) return;
 
-	const userCommand = commandInput.value.trim();
-	if (!userCommand) {
-		return;
-	}
-	if (!currentCsvData.trim()) {
-		alert('请先上传或提供数据。');
-		return;
-	}
+    if (!currentCsvData.trim()) {
+        alert('请先上传或粘贴数据，然后再输入指令！');
+        return;
+    }
 
-	await addMessage('user', userCommand);
-	commandInput.value = '';
-	commandInput.disabled = true;
+    addMessage('user', userCommand);
+    commandInput.value = '';
+    sendBtn.disabled = true;
+    commandInput.disabled = true;
 
-	const typingIndicator = await addMessage('ai', '正在思考...');
+    // Add a typing indicator
+    const typingIndicator = document.createElement('div');
+    typingIndicator.classList.add('message', 'ai-message', 'typing-indicator');
+    typingIndicator.textContent = 'AI 正在思考中...';
+    messageList.appendChild(typingIndicator);
+    messageList.scrollTop = messageList.scrollHeight;
 
-	try {
-		const response = await fetch('/api/process', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({ data: currentCsvData, command: userCommand })
-		});
+    try {
+        const response = await fetch("/api/process", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ data: currentCsvData, command: userCommand }),
+        });
 
-		if (!response.ok) {
-			throw new Error(`API request failed with status ${response.status}`);
-		}
+        if (!response.ok) throw new Error(`API Error: ${response.status}`);
+        
+        const completion = await response.json();
+        const newCsvResult = completion.result;
 
-		const completion = await response.json();
-		const newCsvResult = completion.result ?? '';
-		if (typingIndicator?.parentNode) {
-			typingIndicator.remove();
-		}
-		await addMessage('ai', newCsvResult);
-		currentCsvData = typeof newCsvResult === 'string' ? newCsvResult : String(newCsvResult);
-	} catch (error) {
-		console.error('Failed to handle message:', error);
-		if (typingIndicator?.parentNode) {
-			typingIndicator.remove();
-		}
-		await addMessage('system', '处理失败，请稍后重试。');
-	} finally {
-		commandInput.disabled = false;
-		commandInput.focus();
-	}
+        addMessage('ai', newCsvResult);
+        currentCsvData = newCsvResult; // Update state for next turn
+
+    } catch (error) {
+        console.error("Handler Error:", error);
+        addMessage('system', '处理时出现错误，请检查网络或联系管理员。');
+    } finally {
+        sendBtn.disabled = false;
+        commandInput.disabled = false;
+        commandInput.focus();
+        // Remove typing indicator
+        messageList.removeChild(typingIndicator);
+    }
 }
 
-if (sendBtn) {
-	sendBtn.addEventListener('click', handleSendMessage);
+/**
+ * Handles file selection and parsing.
+ */
+async function handleFileSelect(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    addMessage('system', '正在读取文件...');
+    
+    try {
+        const data = await file.arrayBuffer();
+        const workbook = XLSX.read(data, { type: 'array' });
+        const firstSheetName = workbook.SheetNames[0];
+        const worksheet = workbook.Sheets[firstSheetName];
+        
+        const rawCsvString = XLSX.utils.sheet_to_csv(worksheet);
+        const cleanedLines = rawCsvString.split('\n')
+            .map(line => line.replace(/,+$/, ''))
+            .filter(line => line.trim() !== '');
+        const finalCsvString = cleanedLines.join('\n');
+        
+        currentCsvData = finalCsvString; // Update state
+        dataPasteArea.value = finalCsvString; // Also show in (now hidden) textarea
+        addMessage('system', '文件上传成功，数据已准备就绪。现在您可以下达指令了。');
+
+    } catch (error) {
+        console.error('Failed to process file:', error);
+        addMessage('system', '文件读取失败，请确保文件格式正确！');
+    }
+    // Reset file input to allow uploading the same file again
+    event.target.value = '';
 }
 
-if (commandInput) {
-	commandInput.addEventListener('keydown', (event) => {
-		if (event.key === 'Enter' && !event.shiftKey) {
-			event.preventDefault();
-			handleSendMessage();
-		}
-	});
-}
+
+// --- 4. Event Listeners ---
+sendBtn.addEventListener('click', handleSendMessage);
+commandInput.addEventListener('keydown', (event) => {
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault(); // Prevent new line
+        handleSendMessage();
+    }
+});
+
+uploadBtn.addEventListener('click', () => fileUploadInput.click());
+fileUploadInput.addEventListener('change', handleFileSelect);
+
+// (We no longer need the dataPasteArea input listener as file upload is primary)
+// We also hide the textarea and its related elements from the new UI
+const dataInputColumn = document.getElementById('data-input-column'); // Assuming you create a column for it
+if(dataInputColumn) dataInputColumn.style.display = 'none';
