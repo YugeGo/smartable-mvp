@@ -100,15 +100,22 @@ function addMessage(sender, content) {
  * @param {string} csvString The CSV data to convert.
  */
 async function downloadAsExcel(csvString) {
-    try {
-        const worksheet = XLSX.utils.csv_to_sheet(csvString);
-        const workbook = XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(workbook, worksheet, "处理结果");
-        XLSX.writeFile(workbook, "智表处理结果.xlsx");
-    } catch(error) {
-        console.error("Failed to download Excel file:", error);
-        alert("下载失败，请检查控制台错误。");
-    }
+    // 这是正确的代码
+try {
+    // Step 1: Create a new, empty worksheet
+    const worksheet = XLSX.utils.aoa_to_sheet([]); // `aoa_to_sheet` creates a sheet from an array of arrays
+    
+    // Step 2: Use `sheet_add_csv` to parse the CSV string and populate the empty sheet
+    XLSX.utils.sheet_add_csv(worksheet, csvString, { origin: "A1" });
+
+    // Step 3: Proceed as before
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, "处理结果");
+    XLSX.writeFile(workbook, "智表处理结果.xlsx");
+} catch(error) {
+    console.error("Failed to download Excel file:", error);
+    alert("下载失败，请检查控制台错误。");
+}
 }
 
 
