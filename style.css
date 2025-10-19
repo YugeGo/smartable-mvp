@@ -247,10 +247,18 @@ body.dark-mode .data-source-empty {
     flex-grow: 1;
     display: flex;
     justify-content: center;
-    align-items: center;
-    padding: 3rem 1.5rem;
+	align-items: stretch;
+	padding: 2rem 1.5rem;
     position: relative;
-    overflow-y: auto;
+	overflow: hidden;
+	min-height: 100vh;
+}
+
+@supports (height: 100dvh) {
+	#main-content {
+		height: 100dvh;
+		min-height: 100dvh;
+	}
 }
 
 body::before {
@@ -282,8 +290,8 @@ body::after {
 	z-index: 1;
 	width: 100%;
 	max-width: 960px;
-	min-height: 85vh;
-	height: calc(100% - 4rem);
+	height: calc(100vh - 4rem);
+	max-height: calc(100vh - 4rem);
 	display: flex;
 	flex-direction: column;
 	background: var(--glass-surface);
@@ -293,12 +301,20 @@ body::after {
 	box-shadow: 0 32px 60px rgba(148, 163, 184, 0.35);
 	backdrop-filter: blur(24px) saturate(160%);
 	-webkit-backdrop-filter: blur(24px) saturate(160%);
+	overflow: hidden;
 }
 
 body.dark-mode #chat-container {
 	background: rgba(15, 23, 42, 0.82);
 	border: 1px solid rgba(148, 163, 184, 0.22);
 	box-shadow: 0 32px 60px rgba(2, 6, 23, 0.65);
+}
+
+@supports (height: 100dvh) {
+	#chat-container {
+		height: calc(100dvh - 4rem);
+		max-height: calc(100dvh - 4rem);
+	}
 }
 
 #top-loading-bar {
@@ -997,9 +1013,25 @@ body.dark-mode #input-area {
 	box-shadow: 0 24px 40px rgba(2, 6, 23, 0.6);
 }
 
+#chart-style-control {
+	display: flex;
+	flex-direction: column;
+	gap: 0.35rem;
+	min-width: 9rem;
+}
+
+.chart-style-control.hidden {
+	display: none;
+}
+
+#chart-style-control label {
+	font-size: 0.8rem;
+	color: var(--text-muted);
+}
+
 #chart-style-select {
 	height: 3rem;
-	min-width: 9rem;
+	width: 100%;
 	border-radius: 16px;
 	border: 1px solid rgba(148, 163, 184, 0.35);
 	background: rgba(248, 250, 252, 0.9);
@@ -1353,9 +1385,12 @@ thead th {
 
 	#main-content {
 		padding: 1.5rem 1rem 2rem;
+		overflow: visible;
 	}
 
 	#chat-container {
+		height: auto;
+		max-height: none;
 		padding: 1.5rem 1.25rem 1.25rem;
 		border-radius: 20px;
 	}
@@ -1400,7 +1435,7 @@ thead th {
 		justify-content: center;
 	}
 
-	#chart-style-select {
+	#chart-style-control {
 		width: 100%;
 	}
 

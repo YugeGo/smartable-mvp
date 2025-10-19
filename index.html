@@ -73,11 +73,14 @@
                 <button id="upload-btn" class="input-btn">📎</button>
                 <input type="file" id="file-upload-input" style="display: none;">
                 <button id="paste-btn" class="input-btn" aria-label="粘贴数据">📋</button>
-                <select id="chart-style-select" aria-label="图表风格">
-                    <option value="classic">经典配色</option>
-                    <option value="vibrant">活力配色</option>
-                    <option value="pastel">柔和配色</option>
-                </select>
+                <div id="chart-style-control" class="chart-style-control hidden" aria-hidden="true">
+                    <label for="chart-style-select">图表配色</label>
+                    <select id="chart-style-select">
+                        <option value="classic">经典配色</option>
+                        <option value="vibrant">活力配色</option>
+                        <option value="pastel">柔和配色</option>
+                    </select>
+                </div>
                 <button id="dark-mode-toggle" class="input-btn" type="button" aria-label="切换到深色模式">🌙</button>
                 <textarea id="command-input" placeholder="请输入指令..."></textarea>
                 <button id="send-btn" class="input-btn">➢</button>

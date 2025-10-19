@@ -25,6 +25,7 @@ const dataPreviewTable = document.getElementById('data-preview-table');
 const dataPreviewFootnote = document.getElementById('data-preview-footnote');
 const chartStyleSelect = document.getElementById('chart-style-select');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
+const chartStyleControl = document.getElementById('chart-style-control');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
 
@@ -116,6 +117,7 @@ function renderChart(chartOption, containerElement) {
         }
         const chartInstance = echarts.init(containerElement);
         chartInstance.setOption(enhancedOption, true);
+        refreshChartStyleControlVisibility();
     } catch (error) {
         console.error('Failed to render chart:', error);
         containerElement.textContent = '图表渲染失败。';
@@ -1258,6 +1260,8 @@ function rerenderAllCharts() {
             console.error('Failed to re-render chart:', error);
         }
     });
+
+    refreshChartStyleControlVisibility();
 }
 
 function applyDarkMode(enable) {
@@ -1303,6 +1307,8 @@ function initializeThemeControls() {
             rerenderAllCharts();
         });
     }
+
+    refreshChartStyleControlVisibility();
 }
 
 function initializeChartShortcuts() {
@@ -1358,5 +1364,24 @@ function syncChartShortcutButtons(forceDisable = false) {
     if (chartShortcutsSection) {
         chartShortcutsSection.classList.toggle('disabled', shouldDisable);
     }
+}
+
+function refreshChartStyleControlVisibility() {
+    if (!chartStyleControl) {
+        return;
+    }
+
+    const hasCharts = Boolean(document.querySelector('.chart-container'));
+
+    if (!hasCharts && chartStyleControl.contains(document.activeElement)) {
+        if (commandInput) {
+            commandInput.focus();
+        } else if (sendBtn) {
+            sendBtn.focus();
+        }
+    }
+
+    chartStyleControl.classList.toggle('hidden', !hasCharts);
+    chartStyleControl.setAttribute('aria-hidden', hasCharts ? 'false' : 'true');
 }
 
