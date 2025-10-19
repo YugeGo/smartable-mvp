@@ -276,14 +276,10 @@ async function handleSendMessage() {
 		const activeTable = workspace[activeTableName];
 		const workspacePayload = serializeWorkspace(workspace);
 
-		const response = await fetch('/api/process', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify({
-				command: userCommand,
-				activeTableName,
-				workspace: workspacePayload
-			})
+		const response = await callProcessApi({
+			command: userCommand,
+			activeTableName,
+			workspace: workspacePayload
 		});
 
 		if (response.status === 504) {
@@ -1410,4 +1406,31 @@ function showChartPrompt(reason, tableName) {
 	container.appendChild(actions);
 	messageList.appendChild(container);
 	messageList.scrollTop = messageList.scrollHeight;
+}
+
+// --- 4. API Helpers ---
+async function callProcessApi(payload, { timeoutMs = 30000 } = {}) {
+	const controller = new AbortController();
+	const timer = setTimeout(() => controller.abort(), timeoutMs);
+	try {
+		// 优先尝试相对路径（本地 dev / 生产带 redirects）
+		let resp = await fetch('/api/process', {
+			method: 'POST',
+			headers: { 'Content-Type': 'application/json' },
+			body: JSON.stringify(payload),
+			signal: controller.signal
+		});
+		if (resp.status === 404) {
+			// 在某些托管环境中，/api/* 重写可能未生效，回退到 Netlify 函数显式路径
+			resp = await fetch('/.netlify/functions/process', {
+				method: 'POST',
+				headers: { 'Content-Type': 'application/json' },
+				body: JSON.stringify(payload),
+				signal: controller.signal
+			});
+		}
+		return resp;
+	} finally {
+		clearTimeout(timer);
+	}
 }
