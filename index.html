@@ -12,66 +12,60 @@
     <script src="script.js" defer></script>
 </head>
 <body>
-    <!--
-[Instruction Start]
-
-Create a conversational UI layout for a chat application.
-
-1.  **Main Container:**
-    *   Create a main `div` with the id `chat-container`.
-
-2.  **Message List:**
-    *   Inside `chat-container`, create a `div` with the id `message-list`. This will be where all chat bubbles are appended.
-    *   For now, add a sample "system message" div inside it to welcome the user. It should have a class `message system-message` and contain the text "欢迎使用智表！请粘贴或上传您的数据，然后输入指令。".
-
-3.  **Input Area:**
-    *   Below `message-list`, create a `div` with the id `input-area`. This should be a form-like container at the bottom.
-    *   Inside `input-area`, add the following elements in order:
-        *   A `button` with id `upload-btn` and class `input-btn`. It should contain an icon or text for "upload". Let's use the text "📎" for now.
-        *   An actual `<input type="file">` with id `file-upload-input`, which should be hidden.
-        *   A `<textarea>` with id `command-input` for the user to type their message. Give it a placeholder "请输入指令...".
-        *   A `button` with id `send-btn` and class `input-btn`. It should contain an icon or text for "send". Let's use the text "➢" for now.
-
-[Instruction End]
--->
-    <div id="chat-container">
-        <div id="top-loading-bar" aria-hidden="true"></div>
-        <section id="onboarding-banner" aria-label="快速开始指引">
-            <div class="banner-text">
-                <h2>欢迎来到智表</h2>
-                <p>上传一份数据表或者直接粘贴原始文本，我们会帮你整理、分析并给出结构化结果。</p>
-                <div class="prompt-chips" role="list">
-                    <button type="button" class="prompt-chip" data-fill="请帮我整理出每周的销售额，并生成汇总表">整理每周销售额</button>
-                    <button type="button" class="prompt-chip" data-fill="从这些客服对话中提炼出前三大问题，并做统计">提炼客服问题</button>
-                    <button type="button" class="prompt-chip" data-fill="把原始订单数据转换成城市维度的对比表">城市对比表</button>
-                </div>
-            </div>
-            <button id="banner-close" type="button" aria-label="隐藏指引">✕</button>
-        </section>
-        <div id="message-list"></div>
-        <section id="data-input-panel" aria-hidden="true">
-            <header class="panel-header">
-                <div>
-                    <h3>粘贴数据</h3>
-                    <p>支持 CSV 或制表符分隔文本，记得包含表头列名。</p>
-                </div>
-                <button type="button" id="data-paste-close" aria-label="关闭粘贴面板">✕</button>
-            </header>
-            <textarea id="data-paste-area" placeholder="在此粘贴数据，每列使用逗号或制表符分隔..."></textarea>
-            <div class="panel-actions">
-                <button type="button" id="data-paste-cancel">清空</button>
-                <button type="button" id="data-paste-submit" class="primary">导入数据</button>
-            </div>
-        </section>
-        <div id="upload-status" aria-live="polite" role="status"></div>
-        <div id="input-area">
-            <button id="new-session-btn" class="input-btn" aria-label="新会话">🔄</button>
-            <button id="upload-btn" class="input-btn">📎</button>
-            <input type="file" id="file-upload-input" style="display: none;">
-            <button id="paste-btn" class="input-btn" aria-label="粘贴数据">📋</button>
-            <textarea id="command-input" placeholder="请输入指令..."></textarea>
-            <button id="send-btn" class="input-btn">➢</button>
+    <aside id="sidebar">
+        <h2>数据源</h2>
+        <div id="data-source-list">
+            <!-- Data sources will be dynamically added here -->
         </div>
-    </div>
+    </aside>
+    <main id="main-content">
+        <div id="chat-container">
+            <div id="top-loading-bar" aria-hidden="true"></div>
+            <section id="onboarding-banner" aria-label="快速开始指引">
+                <div class="banner-text">
+                    <h2>欢迎来到智表</h2>
+                    <p>上传一份数据表或者直接粘贴原始文本，我们会帮你整理、分析并给出结构化结果。</p>
+                    <div class="prompt-chips" role="list">
+                        <button type="button" class="prompt-chip" data-fill="请帮我整理出每周的销售额，并生成汇总表">整理每周销售额</button>
+                        <button type="button" class="prompt-chip" data-fill="从这些客服对话中提炼出前三大问题，并做统计">提炼客服问题</button>
+                        <button type="button" class="prompt-chip" data-fill="把原始订单数据转换成城市维度的对比表">城市对比表</button>
+                    </div>
+                </div>
+                <button id="banner-close" type="button" aria-label="隐藏指引">✕</button>
+            </section>
+                <section id="data-preview" aria-live="polite" aria-label="当前数据预览" class="empty">
+                    <header class="preview-header">
+                        <h3 id="data-preview-title">当前数据源</h3>
+                        <span class="preview-meta">实时展示当前选中数据的最近状态</span>
+                    </header>
+                    <div id="data-preview-table" class="preview-table"></div>
+                    <p id="data-preview-footnote" class="data-preview-footnote"></p>
+                </section>
+            <div id="message-list"></div>
+            <section id="data-input-panel" aria-hidden="true">
+                <header class="panel-header">
+                    <div>
+                        <h3>粘贴数据</h3>
+                        <p>支持 CSV 或制表符分隔文本，记得包含表头列名。</p>
+                    </div>
+                    <button type="button" id="data-paste-close" aria-label="关闭粘贴面板">✕</button>
+                </header>
+                <textarea id="data-paste-area" placeholder="在此粘贴数据，每列使用逗号或制表符分隔..."></textarea>
+                <div class="panel-actions">
+                    <button type="button" id="data-paste-cancel">清空</button>
+                    <button type="button" id="data-paste-submit" class="primary">导入数据</button>
+                </div>
+            </section>
+            <div id="upload-status" aria-live="polite" role="status"></div>
+            <div id="input-area">
+                <button id="new-session-btn" class="input-btn" aria-label="新会话">🔄</button>
+                <button id="upload-btn" class="input-btn">📎</button>
+                <input type="file" id="file-upload-input" style="display: none;">
+                <button id="paste-btn" class="input-btn" aria-label="粘贴数据">📋</button>
+                <textarea id="command-input" placeholder="请输入指令..."></textarea>
+                <button id="send-btn" class="input-btn">➢</button>
+            </div>
+        </div>
+    </main>
 </body>
 </html>

@@ -17,61 +17,49 @@ export async function handler(event) {
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { data, command, originalData, latestSchema, originalSchema } = body;
+        const { command, workspace: workspaceCandidate, activeTableName } = body;
 
-        if (!data || !command) {
+        if (!command || typeof command !== 'string') {
             return {
                 statusCode: 400,
-                body: JSON.stringify({ error: 'Data and command are required.' })
+                body: JSON.stringify({ error: 'Command is required.' })
             };
         }
 
-        const latestData = typeof data === 'string' ? data : '';
-        const initialData = typeof originalData === 'string' && originalData.trim() !== ''
-            ? originalData
-            : latestData;
+        const normalizedWorkspace = normalizeWorkspace(workspaceCandidate);
+        const requestedActiveName = typeof activeTableName === 'string' ? activeTableName : '';
+        const resolvedActiveName = resolveActiveTableName(normalizedWorkspace, requestedActiveName);
 
-        const sanitizedLatestSchema = normalizeSchema(latestSchema, latestData);
-        const sanitizedOriginalSchema = normalizeSchema(originalSchema, initialData);
+        if (!resolvedActiveName) {
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: 'Active table is required and must exist in the workspace.' })
+            };
+        }
+
+        const workspacePrompt = buildWorkspacePrompt(normalizedWorkspace, resolvedActiveName);
 
         const prompt = `
-You are a world-class data analyst specializing in spreadsheets and data visualization. You are precise, efficient, and return structured data only.
+You are a world-class data analyst specializing in spreadsheets and data visualization. You work inside a multi-table workspace.
 
-You will receive two CSV inputs and their detected schemas:
-1. Latest dataset: the most recent table you produced in this conversation.
-2. Original dataset: the raw data as initially uploaded by the user.
+Workspace rules:
+- The workspace contains multiple named tables. Each table has an original version (initial upload) and the latest version (after prior AI steps).
+- The active table is "${resolvedActiveName}". Unless the user specifies another target, operate on this table and keep its column integrity.
+- You may reference any other table in the workspace when the task requires joins, lookups, or cross-table calculations.
+- When you modify an existing table, do not drop columns that are present in its latest schema unless the user explicitly instructs you to do so.
+- If the user asks for a new derived table, choose a concise, descriptive snake_case name and place it in the "targetTable" field of your response.
+- If the user mentions a specific table name that exists in the workspace, treat that table as the command target and set "targetTable" to that name.
+- When a requested field is missing from the latest version but exists in the original version of the same table, reintroduce it from the original data.
+- Prefer working with the latest version to maintain continuity, and consult the original only when necessary.
 
-Operate on the latest dataset by default so your work remains consistent across turns. If the latest dataset is missing columns or rows required by the command, you may consult the original dataset and reintroduce the necessary fields.
-
-Key requirements:
-- Always review latest schema and original schema information before generating a result.
-- Preserve every column present in the latest schema unless the user explicitly instructs you to drop it.
-- When the user requests a column that is missing from the latest schema but present in the original schema, bring the column back using the original data.
-- Keep column ordering aligned with the latest schema; append reintroduced columns at the end if no prior ordering guidance exists.
-- The client will reject responses that drop columns from the latest schema, so comply strictly with these rules.
-
-Your response MUST be a single valid JSON object with two keys:
-1. "result": string of processed data in standard CSV format (header row required).
+Your response MUST be a single valid JSON object with the following keys:
+1. "result": string of processed data in standard CSV format (header row required). If no tabular result is appropriate, return the unchanged data of the target table.
 2. "chart": if the command implies a visualization, return an ECharts option object; otherwise null.
+3. "targetTable": the name of the table that should receive the result (existing or new). Default to "${resolvedActiveName}" if the user does not imply another table.
 
-The chart object, when not null, must be a valid ECharts option (e.g. include series, xAxis, yAxis, etc.). Do not add explanations or markdown, only the raw JSON.
+Workspace Snapshot:
+${workspacePrompt}
 
-Latest Dataset (current state):
----
-${latestData}
----
-Original Dataset (reference only when needed):
----
-${initialData}
----
-Latest Schema:
----
-${sanitizedLatestSchema.join(', ') || 'None detected'}
----
-Original Schema:
----
-${sanitizedOriginalSchema.join(', ') || 'None detected'}
----
 Command:
 ---
 ${command}
@@ -131,4 +119,86 @@ function extractHeaders(csvString) {
         .split(',')
         .map(header => header.trim())
         .filter(header => header.length > 0);
+}
+
+function normalizeWorkspace(workspaceCandidate) {
+    const normalized = {};
+
+    if (!workspaceCandidate || typeof workspaceCandidate !== 'object') {
+        return normalized;
+    }
+
+    Object.entries(workspaceCandidate).forEach(([tableName, tableValue]) => {
+        if (typeof tableName !== 'string' || tableName.trim() === '') {
+            return;
+        }
+
+        const currentData = typeof tableValue?.currentData === 'string' ? tableValue.currentData : '';
+        const originalDataCandidate = typeof tableValue?.originalData === 'string' ? tableValue.originalData : '';
+        const originalData = originalDataCandidate && originalDataCandidate.trim() !== ''
+            ? originalDataCandidate
+            : currentData;
+
+        normalized[tableName] = {
+            currentData,
+            originalData,
+            currentSchema: normalizeSchema(tableValue?.currentSchema, currentData),
+            originalSchema: normalizeSchema(tableValue?.originalSchema, originalData)
+        };
+    });
+
+    return normalized;
+}
+
+function resolveActiveTableName(workspaceMap, requestedName) {
+    if (!requestedName) {
+        return '';
+    }
+
+    if (workspaceMap[requestedName]) {
+        return requestedName;
+    }
+
+    const fallback = Object.keys(workspaceMap).find(name => name.trim() === requestedName.trim());
+    return fallback || '';
+}
+
+function buildWorkspacePrompt(workspaceMap, activeTableName) {
+    const sections = Object.entries(workspaceMap).map(([tableName, tableValue]) => {
+        const roleLabel = tableName === activeTableName
+            ? 'Active table (default target)'
+            : 'Auxiliary table';
+
+        const currentSchema = tableValue.currentSchema?.join(', ') || 'None detected';
+        const originalSchema = tableValue.originalSchema?.join(', ') || 'None detected';
+
+        return `Table: ${tableName}
+Role: ${roleLabel}
+Current Schema: ${currentSchema}
+Original Schema: ${originalSchema}
+Current Data (trimmed preview):
+---
+${truncateCsv(tableValue.currentData)}
+---
+Original Data Snapshot:
+---
+${truncateCsv(tableValue.originalData)}
+---`;
+    });
+
+    return sections.join('\n\n');
+}
+
+function truncateCsv(csvString, maxLines = 200) {
+    if (!csvString || typeof csvString !== 'string') {
+        return '';
+    }
+
+    const lines = csvString.split('\n');
+    if (lines.length <= maxLines) {
+        return csvString;
+    }
+
+    const trimmed = lines.slice(0, maxLines).join('\n');
+    return `${trimmed}\n...（数据已截断，仅展示前 ${maxLines} 行）`;
 }

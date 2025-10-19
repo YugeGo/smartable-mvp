@@ -18,6 +18,11 @@ const dataPasteSubmit = document.getElementById('data-paste-submit');
 const dataPasteCancel = document.getElementById('data-paste-cancel');
 const dataPasteClose = document.getElementById('data-paste-close');
 const newSessionBtn = document.getElementById('new-session-btn');
+const dataSourceList = document.getElementById('data-source-list');
+const dataPreviewSection = document.getElementById('data-preview');
+const dataPreviewTitle = document.getElementById('data-preview-title');
+const dataPreviewTable = document.getElementById('data-preview-table');
+const dataPreviewFootnote = document.getElementById('data-preview-footnote');
 
 const STORAGE_KEYS = {
     initialMessage: 'smartable:initial-message',
@@ -27,8 +32,11 @@ const STORAGE_KEYS = {
 
 // --- 2. State Management ---
 let messages = [];
-let currentCsvData = '';
-let originalCsvData = '';
+// The workspace holds all data sources. Each key is a table name.
+// Each value is an object: { originalData: '...', currentData: '...' }
+let workspace = {};
+// The name of the table currently being viewed/edited.
+let activeTableName = '';
 
 // --- 3. Core Functions ---
 
@@ -110,7 +118,7 @@ function renderCsvAsTable(csvString, containerElement) {
  * @param {('user'|'ai'|'system')} sender The sender of the message.
  * @param {string|object} content The content of the message.
  */
-function addMessage(sender, content) {
+function addMessage(sender, content, doSave = true) {
     const messageBubble = document.createElement('div');
     messageBubble.classList.add('message', `${sender}-message`);
 
@@ -171,7 +179,9 @@ function addMessage(sender, content) {
         return;
     }
     messages.push({ sender, content });
-    saveSession();
+    if (doSave) {
+        saveSession();
+    }
 }
 
 /**
@@ -202,7 +212,7 @@ async function handleSendMessage() {
         return;
     }
 
-    if (!currentCsvData.trim()) {
+    if (!activeTableName || !workspace[activeTableName]) {
         updateUploadStatus('请先上传或粘贴一份数据，再开始对话。', 'error');
         return;
     }
@@ -216,19 +226,16 @@ async function handleSendMessage() {
     messageList.scrollTop = messageList.scrollHeight;
 
     try {
-        const latestSchema = extractHeaders(currentCsvData);
-        const originalSchema = extractHeaders(originalCsvData);
-        const expectedSchema = [...latestSchema];
+        const activeTable = workspace[activeTableName];
+        const workspacePayload = serializeWorkspace(workspace);
 
         const response = await fetch('/api/process', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                data: currentCsvData,
                 command: userCommand,
-                originalData: originalCsvData,
-                latestSchema,
-                originalSchema
+                activeTableName,
+                workspace: workspacePayload
             })
         });
 
@@ -243,16 +250,39 @@ async function handleSendMessage() {
         addMessage('ai', completion);
 
         if (completion && completion.result) {
-            const nextSchema = extractHeaders(completion.result);
-            const missingColumns = findMissingColumns(expectedSchema, nextSchema);
+            const targetTableRaw = typeof completion.targetTable === 'string'
+                ? completion.targetTable.trim()
+                : '';
+            const destinationTableName = targetTableRaw || activeTableName;
+            const destinationExists = Boolean(workspace[destinationTableName]);
 
-            if (missingColumns.length > 0 && expectedSchema.length > 0) {
+            const baselineSchema = destinationExists
+                ? extractHeaders(workspace[destinationTableName].currentData)
+                : [];
+            const nextSchema = extractHeaders(completion.result);
+            const missingColumns = destinationExists
+                ? findMissingColumns(baselineSchema, nextSchema)
+                : [];
+
+            if (missingColumns.length > 0 && baselineSchema.length > 0) {
                 addMessage(
                     'system',
-                    `检测到返回结果缺少列：${missingColumns.join(', ')}。已保持上一轮数据，请尝试更明确的指令或直接说明需要保留这些列。`
+                    `检测到 ${destinationTableName} 的返回结果缺少列：${missingColumns.join(', ')}。已保持上一轮数据，请尝试更明确的指令或直接说明需要保留这些列。`
                 );
             } else {
-                currentCsvData = completion.result;
+                if (!destinationExists) {
+                    workspace[destinationTableName] = {
+                        originalData: completion.result,
+                        currentData: completion.result
+                    };
+                    addMessage('system', `已创建新的数据源 ${destinationTableName}，结果已写入。`);
+                } else if (destinationTableName !== activeTableName) {
+                    addMessage('system', `已将结果写入 ${destinationTableName}，现已切换到该数据源。`);
+                } else {
+                    workspace[destinationTableName].currentData = completion.result;
+                }
+
+                setActiveTable(destinationTableName);
             }
         }
     } catch (error) {
@@ -299,13 +329,16 @@ async function handleFileSelect(event) {
         }
 
         const rowCount = Math.max(finalCsvString.split('\n').length - 1, 0);
+        const tableName = file.name;
 
-        currentCsvData = finalCsvString;
-        originalCsvData = finalCsvString;
+        workspace[tableName] = {
+            originalData: finalCsvString,
+            currentData: finalCsvString
+        };
         messages = []; // Reset history on new upload
-        addMessage('system', '文件上传成功，数据已准备就绪。现在您可以下达指令了。');
-        updateUploadStatus(`✅ ${file.name} · ${formatFileSize(file.size)} · ${headers.length} 列 · ${rowCount} 行 已准备就绪`, 'success');
-        saveSession();
+        setActiveTable(tableName);
+        addMessage('system', `文件 ${tableName} 上传成功，数据已准备就绪。`);
+        updateUploadStatus(`✅ ${tableName} · ${formatFileSize(file.size)} · ${headers.length} 列 · ${rowCount} 行`, 'success');
     } catch (error) {
         console.error('Failed to process file:', error);
         updateUploadStatus(`⚠️ ${file.name} 读取失败，请确保文件格式正确。`, 'error');
@@ -487,6 +520,8 @@ function initializeOnboarding() {
             }
         });
     });
+
+    renderDataSourceList();
 }
 
 function openDataInputPanel() {
@@ -546,16 +581,19 @@ function handlePasteSubmit() {
     }
 
     const rowCount = Math.max(sanitized.split('\n').length - 1, 0);
+    const tableName = `粘贴数据-${new Date().toLocaleTimeString()}`;
 
-    currentCsvData = sanitized;
-    originalCsvData = sanitized;
+    workspace[tableName] = {
+        originalData: sanitized,
+        currentData: sanitized
+    };
     messages = []; // Reset history on new paste
-    addMessage('system', '粘贴数据成功，随时输入指令开始分析。');
-    updateUploadStatus(`✅ 粘贴数据 · ${headers.length} 列 · ${rowCount} 行 已准备就绪`, 'success');
+    setActiveTable(tableName);
+    addMessage('system', `粘贴数据 ${tableName} 成功，随时输入指令开始分析。`);
+    updateUploadStatus(`✅ ${tableName} · ${headers.length} 列 · ${rowCount} 行`, 'success');
 
     dataPasteArea.value = '';
     closeDataInputPanel();
-    saveSession();
 }
 
 function extractHeaders(csvString) {
@@ -740,16 +778,199 @@ function getCategoryCount(axisCandidate) {
     return maxCount;
 }
 
+function serializeWorkspace(source) {
+    const payload = {};
+
+    Object.entries(source || {}).forEach(([tableName, tableValue]) => {
+        if (!tableName || typeof tableName !== 'string') {
+            return;
+        }
+
+        payload[tableName] = {
+            currentData: tableValue?.currentData || '',
+            originalData: tableValue?.originalData || tableValue?.currentData || ''
+        };
+    });
+
+    return payload;
+}
+
+function renderDataSourceList() {
+    if (!dataSourceList) {
+        return;
+    }
+
+    dataSourceList.innerHTML = '';
+
+    const tableNames = Object.keys(workspace);
+    if (tableNames.length === 0) {
+        const emptyItem = document.createElement('div');
+        emptyItem.classList.add('data-source-empty');
+        emptyItem.textContent = '暂无数据源';
+        dataSourceList.appendChild(emptyItem);
+        renderActiveTablePreview();
+        return;
+    }
+
+    tableNames.forEach(tableName => {
+        const tableEntry = workspace[tableName];
+        const { columnCount, rowCount } = getTableStats(tableEntry?.currentData);
+
+        const item = document.createElement('div');
+        item.classList.add('data-source-item');
+        if (tableName === activeTableName) {
+            item.classList.add('active');
+        }
+
+        const selectBtn = document.createElement('button');
+        selectBtn.type = 'button';
+        selectBtn.classList.add('data-source-select');
+        selectBtn.textContent = tableName;
+        selectBtn.addEventListener('click', () => {
+            setActiveTable(tableName);
+        });
+
+        const meta = document.createElement('span');
+        meta.classList.add('data-source-meta');
+        meta.textContent = `${columnCount} 列 · ${rowCount} 行`;
+
+        const deleteBtn = document.createElement('button');
+        deleteBtn.type = 'button';
+        deleteBtn.classList.add('data-source-delete');
+        deleteBtn.setAttribute('aria-label', `移除 ${tableName}`);
+        deleteBtn.textContent = '✕';
+        deleteBtn.addEventListener('click', event => {
+            event.stopPropagation();
+            removeTable(tableName);
+        });
+
+        item.appendChild(selectBtn);
+        item.appendChild(meta);
+        item.appendChild(deleteBtn);
+        dataSourceList.appendChild(item);
+    });
+
+    renderActiveTablePreview();
+}
+
+function getTableStats(csvString) {
+    if (!csvString || typeof csvString !== 'string') {
+        return { columnCount: 0, rowCount: 0 };
+    }
+
+    const headers = extractHeaders(csvString);
+    const rowCount = Math.max(csvString.split('\n').length - 1, 0);
+    return {
+        columnCount: headers.length,
+        rowCount
+    };
+}
+
+function renderActiveTablePreview() {
+    if (!dataPreviewSection || !dataPreviewTitle || !dataPreviewTable) {
+        return;
+    }
+
+    if (!activeTableName || !workspace[activeTableName]) {
+        dataPreviewSection.classList.add('empty');
+        dataPreviewTitle.textContent = '当前数据源';
+        dataPreviewTable.innerHTML = '<p class="data-preview-placeholder">请选择数据源以查看表格。</p>';
+        if (dataPreviewFootnote) {
+            dataPreviewFootnote.textContent = '';
+        }
+        return;
+    }
+
+    const tableEntry = workspace[activeTableName];
+    const fullCsv = tableEntry.currentData || '';
+        if (!fullCsv.trim()) {
+            dataPreviewSection.classList.remove('empty');
+            dataPreviewTitle.textContent = `当前数据源 · ${activeTableName}`;
+            dataPreviewTable.innerHTML = '<p class="data-preview-placeholder">该数据源目前没有可展示的行。</p>';
+            if (dataPreviewFootnote) {
+                dataPreviewFootnote.textContent = '';
+            }
+            return;
+        }
+    const rows = fullCsv ? fullCsv.trim().split('\n') : [];
+    const previewRowLimit = 120;
+    const hasHeader = rows.length > 0;
+
+    let previewCsv = fullCsv;
+    let truncated = false;
+    if (hasHeader && rows.length - 1 > previewRowLimit) {
+        const header = rows[0];
+        const limitedRows = rows.slice(1, previewRowLimit + 1);
+        previewCsv = [header, ...limitedRows].join('\n');
+        truncated = true;
+    }
+
+    dataPreviewSection.classList.remove('empty');
+    dataPreviewTitle.textContent = `当前数据源 · ${activeTableName}`;
+    renderCsvAsTable(previewCsv, dataPreviewTable);
+
+    if (dataPreviewFootnote) {
+        if (truncated) {
+            const totalRows = Math.max(rows.length - 1, 0);
+            dataPreviewFootnote.textContent = `仅展示前 ${previewRowLimit} 行（共 ${totalRows} 行）`; 
+        } else {
+            dataPreviewFootnote.textContent = '';
+        }
+    }
+}
+
+function setActiveTable(tableName) {
+    if (!tableName || !workspace[tableName]) {
+    activeTableName = '';
+    renderDataSourceList();
+    updateUploadStatus('数据源已清空，请上传或粘贴新的数据。');
+    saveSession();
+    return;
+    }
+
+    activeTableName = tableName;
+    renderDataSourceList();
+
+    const { columnCount, rowCount } = getTableStats(workspace[tableName].currentData);
+    updateUploadStatus(`📊 当前数据源: ${tableName} · ${columnCount} 列 · ${rowCount} 行`);
+    saveSession();
+}
+
+function removeTable(tableName) {
+    if (!workspace[tableName]) {
+        return;
+    }
+
+    delete workspace[tableName];
+
+    if (tableName === activeTableName) {
+        const remainingNames = Object.keys(workspace);
+        activeTableName = remainingNames[0] || '';
+
+        if (activeTableName) {
+            const { columnCount, rowCount } = getTableStats(workspace[activeTableName].currentData);
+            updateUploadStatus(`📊 已切换至 ${activeTableName} · ${columnCount} 列 · ${rowCount} 行`);
+        } else {
+            updateUploadStatus('数据源已清空，请上传或粘贴新的数据。');
+        }
+    }
+
+    addMessage('system', `数据源 ${tableName} 已移除。`);
+    renderDataSourceList();
+    renderActiveTablePreview();
+    saveSession();
+}
+
 function saveSession() {
-    if (messages.length === 0 && !currentCsvData) {
+    if (Object.keys(workspace).length === 0 && messages.length === 0) {
         localStorage.removeItem(STORAGE_KEYS.session);
         return;
     }
 
     const sessionData = {
         messages,
-        currentCsvData,
-        originalCsvData
+        workspace,
+        activeTableName
     };
 
     try {
@@ -768,7 +989,7 @@ function loadSession() {
 
     try {
         const sessionData = JSON.parse(savedSession);
-        if (!sessionData || !sessionData.messages || !sessionData.currentCsvData) {
+        if (!sessionData || !sessionData.messages || !sessionData.workspace) {
             return false;
         }
 
@@ -776,15 +997,23 @@ function loadSession() {
         messageList.innerHTML = '';
 
         sessionData.messages.forEach(msg => {
-            addMessage(msg.sender, msg.content);
+            addMessage(msg.sender, msg.content, false); // Pass false to avoid re-saving
         });
 
-        currentCsvData = sessionData.currentCsvData;
-        originalCsvData = sessionData.originalCsvData || sessionData.currentCsvData;
+        workspace = sessionData.workspace;
+        activeTableName = sessionData.activeTableName || '';
 
-        const headers = extractHeaders(currentCsvData);
-        const rowCount = Math.max(currentCsvData.split('\n').length - 1, 0);
-        updateUploadStatus(`✅ 会话已恢复 · ${headers.length} 列 · ${rowCount} 行`, 'success');
+        if (activeTableName && workspace[activeTableName]) {
+            const tableData = workspace[activeTableName].currentData;
+            const headers = extractHeaders(tableData);
+            const rowCount = Math.max(tableData.split('\n').length - 1, 0);
+            updateUploadStatus(`✅ 会话已恢复: ${activeTableName} · ${headers.length} 列 · ${rowCount} 行`, 'success');
+        } else {
+            updateUploadStatus('✅ 会话已恢复，请从左侧选择数据源。', 'success');
+        }
+
+        renderDataSourceList();
+    renderActiveTablePreview();
 
         return true;
     } catch (error) {
