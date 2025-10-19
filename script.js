@@ -90,14 +90,16 @@ if (fileUploadInput) {
             dataPasteArea.value = '正在读取文件...';
             const data = await file.arrayBuffer();
             const workbook = XLSX.read(data, { type: 'array' });
-            const firstSheetName = workbook.SheetNames && workbook.SheetNames[0];
-
+            const firstSheetName = workbook.SheetNames?.[0];
             if (!firstSheetName) {
                 throw new Error('未找到工作表');
             }
 
             const worksheet = workbook.Sheets[firstSheetName];
-            const csvString = XLSX.utils.sheet_to_csv(worksheet);
+            const csvString = XLSX.utils
+                .sheet_to_csv(worksheet, { skipHidden: true })
+                .replace(/^(,*\s*)+$/gm, '')
+                .trim();
             dataPasteArea.value = csvString;
         } catch (error) {
             console.error('Failed to process file:', error);
