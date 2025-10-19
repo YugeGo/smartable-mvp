@@ -5,6 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智表 (Smartable) - AI表格助手 MVP</title>
     <link rel="stylesheet" href="style.css">
+    <!-- Add a script tag to import the SheetJS library from its CDN -->
+    <script src="https://cdn.sheetjs.com/xlsx-0.20.2/package/dist/xlsx.full.min.js"></script>
     <script src="script.js" defer></script>
 </head>
 <body>
@@ -14,8 +16,20 @@
         </header>
         <section class="workspace-grid">
             <div id="data-input">
+                <!--
+Inside this div, first add an `<h2>` with the text "数据输入".
+Then, add a `<textarea>` with id `data-paste-area` and a new placeholder: "请将Excel/CSV数据粘贴到这里... 或点击下方按钮上传文件".
+Below the textarea, create a container `div` with class `file-upload-container`.
+Inside this container, add two elements:
+1. An `<input>` of type "file", with id `file-upload-input`. It should accept `.xlsx, .xls, .csv` files.
+2. A `<label>` that is linked to `file-upload-input`. The label should have a class `file-upload-label` and the text "点击上传文件".
+-->
                 <h2>数据输入</h2>
-                <textarea id="data-paste-area" placeholder="请将Excel/CSV数据粘贴到这里..."></textarea>
+                <textarea id="data-paste-area" placeholder="请将Excel/CSV数据粘贴到这里... 或点击下方按钮上传文件"></textarea>
+                <div class="file-upload-container">
+                    <input type="file" id="file-upload-input" accept=".xlsx, .xls, .csv" />
+                    <label for="file-upload-input" class="file-upload-label">点击上传文件</label>
+                </div>
             </div>
             <div id="ai-command">
                 <h2>AI 指令</h2>

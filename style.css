@@ -94,3 +94,73 @@ tbody tr:hover {
     margin: 0.5em 0;
     color: #555;
 }
+/*
+Create styles for the file upload button.
+First, hide the actual file input element with id `file-upload-input`.
+Then, style the `.file-upload-label` to look like a button:
+- Make it an inline-block.
+- Give it padding (e.g., 10px 15px).
+- Use a green background color (e.g., #5cb85c) with white text.
+- Add rounded corners.
+- Make the cursor a pointer.
+- Add a hover effect that slightly darkens the background color.
+Finally, add some top margin to the `.file-upload-container` to create space.
+*/
+
+/* Add top margin to file upload container for spacing */
+.file-upload-container {
+    margin-top: 20px;
+}
+
+/* Button styles for file upload label */
+.file-upload-label {
+    display: inline-block;
+    padding: 10px 15px;
+    background-color: #5cb85c;
+    color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out;
+    border: none;
+    text-align: center;
+}
+
+.file-upload-label:hover {
+    background-color: #449d48;
+}
+
+.file-upload-container {
+    margin-top: 20px;
+}
+
+#file-upload-input {
+    display: none;
+}
+
+#file-upload-input {
+    display: none;
+}
+
+.file-upload-label {
+    display: inline-block;
+    padding: 10px 15px;
+    background-color: #5cb85c;
+    color: #fff;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 15px;
+    font-weight: 500;
+    transition: background-color 0.2s ease-in-out;
+    border: none;
+    text-align: center;
+}
+
+.file-upload-label:hover {
+    background-color: #449d48;
+}
+
+.file-upload-container {
+    margin-top: 20px;
+}
