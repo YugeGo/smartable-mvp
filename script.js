@@ -7,6 +7,7 @@ const executeBtn = document.getElementById('execute-btn');
 const resultDisplay = document.getElementById('result-display');
 const copyBtn = document.getElementById('copy-btn'); // V1.1 Added
 const fileUploadInput = document.getElementById('file-upload-input');
+let currentCsvData = '';
 
 // V1.1 New Function: Render CSV string as an HTML table
 function renderCsvAsTable(csvString, containerElement) {
@@ -107,6 +108,7 @@ const cleanedLines = rawCsvString.split('\n') // 1. Split into lines
 const finalCsvString = cleanedLines.join('\n'); // 4. Join the cleaned lines back together
 
 dataPasteArea.value = finalCsvString; // Set the textarea value to the final result
+currentCsvData = finalCsvString;
         } catch (error) {
             console.error('Failed to process file:', error);
             dataPasteArea.value = '文件读取失败，请确保文件格式正确！';
@@ -114,13 +116,20 @@ dataPasteArea.value = finalCsvString; // Set the textarea value to the final res
     });
 }
 
+// Keep currentCsvData in sync with dataPasteArea input
+if (dataPasteArea) {
+    dataPasteArea.addEventListener('input', () => {
+        currentCsvData = dataPasteArea.value;
+    });
+}
+
 // Main Event Listener for the Execute Button
 executeBtn.addEventListener('click', async () => {
-    const userInputData = dataPasteArea.value;
+    const dataToSend = currentCsvData;
     const userCommand = commandInput.value;
 
     // V1.1 Update: Input validation
-    if (!userInputData.trim() || !userCommand.trim()) {
+    if (!dataToSend.trim() || !userCommand.trim()) {
         alert('请输入数据和指令！');
         return;
     }
@@ -135,7 +144,7 @@ executeBtn.addEventListener('click', async () => {
         const response = await fetch("/api/process", {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ data: userInputData, command: userCommand }),
+            body: JSON.stringify({ data: dataToSend, command: userCommand }),
         });
 
         if (!response.ok) {
@@ -143,11 +152,9 @@ executeBtn.addEventListener('click', async () => {
         }
 
         const completion = await response.json();
-        const csvResult = completion.result;
-        
-        // Render the result
-        renderCsvAsTable(csvResult, resultDisplay);
-
+        const newCsvResult = completion.result;
+        renderCsvAsTable(newCsvResult, resultDisplay);
+        currentCsvData = newCsvResult;
     } catch (error) {
         console.error("Handler Error:", error);
         resultDisplay.textContent = "处理时出现错误，请稍后再试。";
