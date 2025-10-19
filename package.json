@@ -7,8 +7,11 @@
   "name": "smartable-mvp",
   "version": "1.0.0",
   "description": "欢迎来到“智表”，一款由 AI 驱动、专为数据整理和分析打造的对话式表格助手。通过自然语言与它沟通，就能完成上传、清洗、统计、可视化、导出等一系列琐碎工作，把繁琐流程缩短到几次对话。",
-  "main": "script.js",
+  "main": "src/main.js",
   "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "repository": {
