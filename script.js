@@ -6,6 +6,16 @@ const commandInput = document.getElementById('command-input');
 const sendBtn = document.getElementById('send-btn');
 const uploadBtn = document.getElementById('upload-btn');
 const fileUploadInput = document.getElementById('file-upload-input');
+const topLoadingBar = document.getElementById('top-loading-bar');
+const onboardingBanner = document.getElementById('onboarding-banner');
+const bannerCloseBtn = document.getElementById('banner-close');
+const uploadStatus = document.getElementById('upload-status');
+const promptChips = document.querySelectorAll('.prompt-chip');
+
+const STORAGE_KEYS = {
+    initialMessage: 'smartable:initial-message',
+    bannerDismissed: 'smartable:banner-dismissed'
+};
 
 // --- 2. State Management ---
 let currentCsvData = '';
@@ -162,19 +172,16 @@ async function handleSendMessage() {
     }
 
     if (!currentCsvData.trim()) {
-        alert('请先上传或粘贴数据，然后再输入指令！');
+        updateUploadStatus('请先上传或粘贴一份数据，再开始对话。', 'error');
         return;
     }
 
     addMessage('user', userCommand);
     commandInput.value = '';
-    sendBtn.disabled = true;
-    commandInput.disabled = true;
+    setLoadingState(true);
 
-    const typingIndicator = document.createElement('div');
-    typingIndicator.classList.add('message', 'ai-message', 'typing-indicator');
-    typingIndicator.textContent = 'AI 正在思考中...';
-    messageList.appendChild(typingIndicator);
+    const skeletonMessage = createSkeletonMessage();
+    messageList.appendChild(skeletonMessage);
     messageList.scrollTop = messageList.scrollHeight;
 
     try {
@@ -189,6 +196,9 @@ async function handleSendMessage() {
         }
 
         const completion = await response.json();
+        if (skeletonMessage.parentNode) {
+            messageList.removeChild(skeletonMessage);
+        }
         addMessage('ai', completion);
 
         if (completion && completion.result) {
@@ -196,15 +206,14 @@ async function handleSendMessage() {
         }
     } catch (error) {
         console.error('Handler Error:', error);
-        addMessage('system', '处理时出现错误，请检查网络或联系管理员。');
-    } finally {
-        sendBtn.disabled = false;
-        commandInput.disabled = false;
-        commandInput.focus();
-
-        if (typingIndicator.parentNode) {
-            messageList.removeChild(typingIndicator);
+        if (skeletonMessage.parentNode) {
+            messageList.removeChild(skeletonMessage);
         }
+        addMessage('system', '处理时出现错误，请检查网络或联系管理员。');
+        updateUploadStatus('请求失败，请稍后再试。', 'error');
+    } finally {
+        setLoadingState(false);
+        commandInput.focus();
     }
 }
 
@@ -214,10 +223,11 @@ async function handleSendMessage() {
 async function handleFileSelect(event) {
     const file = event.target.files[0];
     if (!file) {
+        updateUploadStatus('');
         return;
     }
 
-    addMessage('system', '正在读取文件...');
+    updateUploadStatus(`📄 正在读取 ${file.name}...`, 'loading');
 
     try {
         const data = await file.arrayBuffer();
@@ -233,9 +243,11 @@ async function handleFileSelect(event) {
         const finalCsvString = cleanedLines.join('\n');
 
         currentCsvData = finalCsvString;
+        updateUploadStatus(`✅ ${file.name} · ${formatFileSize(file.size)} 已准备就绪`, 'success');
         addMessage('system', '文件上传成功，数据已准备就绪。现在您可以下达指令了。');
     } catch (error) {
         console.error('Failed to process file:', error);
+        updateUploadStatus(`⚠️ ${file.name} 读取失败，请确保文件格式正确。`, 'error');
         addMessage('system', '文件读取失败，请确保文件格式正确！');
     }
 
@@ -254,9 +266,109 @@ commandInput.addEventListener('keydown', event => {
 uploadBtn.addEventListener('click', () => fileUploadInput.click());
 fileUploadInput.addEventListener('change', handleFileSelect);
 
+initializeOnboarding();
+
 // (We no longer need the dataPasteArea input listener as file upload is primary)
 // We also hide the textarea and its related elements from the new UI
 const dataInputColumn = document.getElementById('data-input-column');
 if (dataInputColumn) {
     dataInputColumn.style.display = 'none';
+}
+
+function setLoadingState(isLoading) {
+    sendBtn.disabled = isLoading;
+    commandInput.disabled = isLoading;
+    uploadBtn.disabled = isLoading;
+
+    if (isLoading) {
+        sendBtn.classList.add('loading');
+        if (topLoadingBar) {
+            topLoadingBar.classList.add('active');
+        }
+    } else {
+        sendBtn.classList.remove('loading');
+        if (topLoadingBar) {
+            topLoadingBar.classList.remove('active');
+        }
+    }
+}
+
+function createSkeletonMessage() {
+    const bubble = document.createElement('div');
+    bubble.classList.add('message', 'ai-message', 'loading-skeleton');
+
+    const linesWrapper = document.createElement('div');
+    linesWrapper.classList.add('skeleton-lines');
+
+    ['85%', '65%', '78%'].forEach(width => {
+        const line = document.createElement('div');
+        line.classList.add('skeleton-line');
+        line.style.width = width;
+        linesWrapper.appendChild(line);
+    });
+
+    bubble.appendChild(linesWrapper);
+    return bubble;
+}
+
+function updateUploadStatus(text, type) {
+    if (!uploadStatus) {
+        return;
+    }
+
+    uploadStatus.textContent = text || '';
+    uploadStatus.className = '';
+
+    if (text) {
+        uploadStatus.classList.add('active');
+        if (type) {
+            uploadStatus.classList.add(type);
+        }
+    }
+}
+
+function formatFileSize(bytes) {
+    if (!Number.isFinite(bytes)) {
+        return '';
+    }
+
+    if (bytes < 1024) {
+        return `${bytes} B`;
+    }
+
+    if (bytes < 1048576) {
+        return `${(bytes / 1024).toFixed(1)} KB`;
+    }
+
+    return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+function initializeOnboarding() {
+    if (!sessionStorage.getItem(STORAGE_KEYS.initialMessage)) {
+        addMessage('system', '欢迎使用智表！上传或粘贴数据后描述你的需求，我们会输出结构化表格并尝试生成图表。');
+        sessionStorage.setItem(STORAGE_KEYS.initialMessage, 'true');
+    }
+
+    if (localStorage.getItem(STORAGE_KEYS.bannerDismissed) === 'true' && onboardingBanner) {
+        onboardingBanner.classList.add('hidden');
+    }
+
+    if (bannerCloseBtn) {
+        bannerCloseBtn.addEventListener('click', () => {
+            if (onboardingBanner) {
+                onboardingBanner.classList.add('hidden');
+            }
+            localStorage.setItem(STORAGE_KEYS.bannerDismissed, 'true');
+        });
+    }
+
+    promptChips.forEach(chip => {
+        chip.addEventListener('click', () => {
+            const preset = chip.getAttribute('data-fill') || '';
+            if (preset) {
+                commandInput.value = preset;
+                commandInput.focus();
+            }
+        });
+    });
 }
