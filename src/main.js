@@ -44,6 +44,15 @@ const dtSortDesc = document.getElementById('dt-sort-desc');
 const dtTopKInput = document.getElementById('dt-topk-k');
 const dtTopKApply = document.getElementById('dt-topk-apply');
 const dtUndo = document.getElementById('dt-undo');
+const dtExportCsv = document.getElementById('dt-export-csv');
+const dtReset = document.getElementById('dt-reset');
+const dtAdvToggle = document.getElementById('dt-adv-toggle');
+const dtAdvPanel = document.getElementById('dt-advanced');
+const dtAdvAdd = document.getElementById('dt-adv-add');
+const dtAdvClear = document.getElementById('dt-adv-clear');
+const dtAdvApply = document.getElementById('dt-adv-apply');
+const dtAdvClose = document.getElementById('dt-adv-close');
+const dtAdvConditions = document.getElementById('dt-adv-conditions');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
@@ -1643,6 +1652,156 @@ function undoLastChange() {
 	saveSession();
 }
 
+// 导出当前预览为CSV
+function exportCurrentPreviewCsv() {
+	if (!activeTableName || !workspace[activeTableName]) return;
+	const csv = workspace[activeTableName].currentData || '';
+	if (!csv.trim()) return;
+	const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+	const url = URL.createObjectURL(blob);
+	const a = document.createElement('a');
+	const ts = new Date().toISOString().slice(0,19).replace(/[:T]/g,'-');
+	a.href = url;
+	a.download = `${activeTableName.replace(/\.[^/.]+$/, '')}-预览-${ts}.csv`;
+	a.click();
+	URL.revokeObjectURL(url);
+}
+
+// 重置为原始数据
+function resetToOriginal() {
+	if (!activeTableName || !workspace[activeTableName]) return;
+	const original = workspace[activeTableName].originalData || '';
+	if (!original) return;
+	const headers = extractHeaders(original);
+	const rows = original.trim().split('\n').slice(1).map(l => l.split(',').map(s => s.trim()));
+	writeActiveCsv(headers, rows);
+	// 清空历史，避免再撤销回到变更前
+	tableHistory.set(activeTableName, []);
+	updateUploadStatus('已重置为原始数据。', 'success');
+}
+
+// 高级筛选：条件构建
+const OPERATORS = [
+	{ value: 'contains', label: '包含' },
+	{ value: 'not_contains', label: '不包含' },
+	{ value: 'eq', label: '等于' },
+	{ value: 'neq', label: '不等于' },
+	{ value: 'gt', label: '大于' },
+	{ value: 'lt', label: '小于' },
+	{ value: 'between', label: '介于' }
+];
+
+function buildConditionRow() {
+	const { headers } = getActiveCsvRows();
+	const row = document.createElement('div');
+	row.classList.add('adv-cond-row');
+
+	const colSel = document.createElement('select');
+	headers.forEach((h, i) => {
+		const opt = document.createElement('option');
+		opt.value = String(i);
+		opt.textContent = h;
+		colSel.appendChild(opt);
+	});
+
+	const opSel = document.createElement('select');
+	OPERATORS.forEach(op => {
+		const opt = document.createElement('option');
+		opt.value = op.value; opt.textContent = op.label; opSel.appendChild(opt);
+	});
+
+	const inputA = document.createElement('input');
+	inputA.type = 'text';
+	inputA.placeholder = '值';
+
+	const inputB = document.createElement('input');
+	inputB.type = 'text';
+	inputB.placeholder = '上限';
+	inputB.style.display = 'none';
+
+	opSel.addEventListener('change', () => {
+		inputB.style.display = opSel.value === 'between' ? '' : 'none';
+		inputA.placeholder = opSel.value === 'between' ? '下限' : '值';
+	});
+
+	const rm = document.createElement('button');
+	rm.type = 'button';
+	rm.textContent = '删除';
+	rm.classList.add('remove-cond');
+	rm.addEventListener('click', () => row.remove());
+
+	row.appendChild(colSel);
+	row.appendChild(opSel);
+	row.appendChild(inputA);
+	row.appendChild(inputB);
+	row.appendChild(rm);
+	return row;
+}
+
+function openAdvancedPanel() {
+	if (!dtAdvPanel) return;
+	dtAdvPanel.hidden = false;
+	dtAdvPanel.setAttribute('aria-hidden', 'false');
+	if (dtAdvToggle) {
+		dtAdvToggle.setAttribute('aria-expanded', 'true');
+		dtAdvToggle.classList.add('active');
+	}
+	// 若无条件，默认添加一行
+	if (dtAdvConditions && dtAdvConditions.children.length === 0) {
+		dtAdvConditions.appendChild(buildConditionRow());
+	}
+}
+
+function closeAdvancedPanel() {
+	if (!dtAdvPanel) return;
+	dtAdvPanel.hidden = true;
+	dtAdvPanel.setAttribute('aria-hidden', 'true');
+	if (dtAdvToggle) {
+		dtAdvToggle.setAttribute('aria-expanded', 'false');
+		dtAdvToggle.classList.remove('active');
+	}
+}
+
+function clearAdvancedConditions() {
+	if (!dtAdvConditions) return;
+	dtAdvConditions.innerHTML = '';
+}
+
+function applyAdvancedFilters() {
+	const { headers, rows } = getActiveCsvRows();
+	if (!headers.length) return;
+	const conditions = Array.from(dtAdvConditions?.children || []);
+	if (conditions.length === 0) return;
+
+	const preds = conditions.map(node => {
+		const [colSel, opSel, aInput, bInput] = node.querySelectorAll('select, input');
+		const colIdx = Number(colSel.value || 0);
+		const op = opSel.value;
+		const a = (aInput.value || '').trim();
+		const b = (bInput?.value || '').trim();
+		return row => {
+			const v = (row[colIdx] || '').trim();
+			switch (op) {
+				case 'contains': return v.includes(a);
+				case 'not_contains': return !v.includes(a);
+				case 'eq': return v === a;
+				case 'neq': return v !== a;
+				case 'gt': return Number(v) > Number(a);
+				case 'lt': return Number(v) < Number(a);
+				case 'between': {
+					const va = Number(a), vb = Number(b), nv = Number(v);
+					if (Number.isNaN(va) || Number.isNaN(vb) || Number.isNaN(nv)) return false;
+					return nv >= Math.min(va, vb) && nv <= Math.max(va, vb);
+				}
+				default: return true;
+			}
+		};
+	});
+
+	const filtered = rows.filter(r => preds.every(p => p(r)));
+	writeActiveCsv(headers, filtered);
+}
+
 // Hook toolbar buttons
 if (dtFilterApply) dtFilterApply.addEventListener('click', applyFilterContains);
 if (dtSortAsc) dtSortAsc.addEventListener('click', () => applySortAscDesc('asc'));
@@ -1653,3 +1812,13 @@ if (dtRefreshColsBtn) dtRefreshColsBtn.addEventListener('click', () => {
 	const csv = workspace[activeTableName]?.currentData || '';
 	populateDataToolsColumns(extractHeaders(csv));
 });
+if (dtExportCsv) dtExportCsv.addEventListener('click', exportCurrentPreviewCsv);
+if (dtReset) dtReset.addEventListener('click', resetToOriginal);
+if (dtAdvToggle) dtAdvToggle.addEventListener('click', () => {
+	const expanded = dtAdvToggle.getAttribute('aria-expanded') === 'true';
+	if (expanded) closeAdvancedPanel(); else openAdvancedPanel();
+});
+if (dtAdvAdd) dtAdvAdd.addEventListener('click', () => dtAdvConditions.appendChild(buildConditionRow()));
+if (dtAdvClear) dtAdvClear.addEventListener('click', clearAdvancedConditions);
+if (dtAdvApply) dtAdvApply.addEventListener('click', applyAdvancedFilters);
+if (dtAdvClose) dtAdvClose.addEventListener('click', closeAdvancedPanel);
