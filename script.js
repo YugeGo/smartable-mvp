@@ -62,17 +62,30 @@ function renderCsvAsTable(csvString, containerElement) {
 /**
  * Dynamically adds a new message bubble to the chat UI.
  * @param {('user'|'ai'|'system')} sender The sender of the message.
- * @param {string} content The content of the message (can be text or CSV).
+ * @param {string|object} content The content of the message. For AI, it's an object { result, chart }.
  */
 function addMessage(sender, content) {
     const messageBubble = document.createElement('div');
     messageBubble.classList.add('message', `${sender}-message`);
 
     if (sender === 'ai') {
-        // AI messages contain the results, which should be a table
-        const tableContainer = document.createElement('div');
-        renderCsvAsTable(content, tableContainer);
-        messageBubble.appendChild(tableContainer);
+        // V1.5 DEBUG: Log the received AI content
+        console.log("AI message content:", content);
+
+        const csvString = content.result;
+        const chartOption = content.chart;
+
+        // V1.5 DEBUG: Log the extracted chart option
+        console.log("Extracted Chart Option:", chartOption);
+
+        // Part 1: Render the table (always)
+        if (csvString && csvString.trim() !== '') {
+            const tableContainer = document.createElement('div');
+            renderCsvAsTable(csvString, tableContainer);
+            messageBubble.appendChild(tableContainer);
+        } else {
+            messageBubble.textContent = '无有效数据返回。';
+        }
 
         // --- V1.4 NEW: Add Action Buttons ---
         const actionsContainer = document.createElement('div');
@@ -81,7 +94,7 @@ function addMessage(sender, content) {
         const downloadBtn = document.createElement('button');
         downloadBtn.classList.add('action-btn');
         downloadBtn.textContent = '📥 下载Excel';
-        downloadBtn.addEventListener('click', () => downloadAsExcel(content));
+        downloadBtn.addEventListener('click', () => downloadAsExcel(csvString));
 
         actionsContainer.appendChild(downloadBtn);
         messageBubble.appendChild(actionsContainer);
@@ -154,11 +167,17 @@ async function handleSendMessage() {
 
         if (!response.ok) throw new Error(`API Error: ${response.status}`);
         
+        // V1.5: The response is the full JSON object { result, chart }
         const completion = await response.json();
-        const newCsvResult = completion.result;
+        
+        // V1.5 DEBUG: Log the raw response from the API
+        console.log("Received from API:", completion);
 
-        addMessage('ai', newCsvResult);
-        currentCsvData = newCsvResult; // Update state for next turn
+        addMessage('ai', completion);
+        // Update state with the new CSV data for the next turn, only if it exists
+        if (completion.result) {
+            currentCsvData = completion.result; // Update state for next turn
+        }
 
     } catch (error) {
         console.error("Handler Error:", error);
