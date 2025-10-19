@@ -40,8 +40,14 @@ function renderChart(chartOption, containerElement) {
     }
 
     try {
+        const optionClone = typeof structuredClone === 'function'
+            ? structuredClone(chartOption)
+            : JSON.parse(JSON.stringify(chartOption));
+
+        const enhancedOption = enhanceChartOption(optionClone, containerElement);
+
         const chartInstance = echarts.init(containerElement);
-        chartInstance.setOption(chartOption);
+        chartInstance.setOption(enhancedOption, true);
     } catch (error) {
         console.error('Failed to render chart:', error);
         containerElement.textContent = '图表渲染失败。';
@@ -568,5 +574,139 @@ function findMissingColumns(expectedSchema, actualSchema) {
 
     const actualSet = new Set(Array.isArray(actualSchema) ? actualSchema : []);
     return expectedSchema.filter(column => !actualSet.has(column));
+}
+
+function enhanceChartOption(option, container) {
+    if (!option) {
+        return option;
+    }
+
+    enforceContainLabel(option);
+    applyBarSeriesSpacing(option);
+    autoResizeChart(option, container);
+
+    return option;
+}
+
+function enforceContainLabel(option) {
+    if (Array.isArray(option.grid)) {
+        option.grid = option.grid.map(gridConfig => ({
+            containLabel: true,
+            ...(gridConfig || {})
+        }));
+        return;
+    }
+
+    if (option.grid && typeof option.grid === 'object') {
+        option.grid = {
+            containLabel: true,
+            ...option.grid
+        };
+        return;
+    }
+
+    option.grid = { containLabel: true };
+}
+
+function applyBarSeriesSpacing(option) {
+    const seriesList = normalizeSeries(option.series);
+    if (seriesList.length === 0) {
+        return;
+    }
+
+    seriesList.forEach(series => {
+        if (!series || typeof series !== 'object') {
+            return;
+        }
+
+        const type = (series.type || '').toLowerCase();
+        if (type === 'bar') {
+            if (series.barCategoryGap === undefined) {
+                series.barCategoryGap = '35%';
+            }
+            if (series.barGap === undefined) {
+                series.barGap = '20%';
+            }
+        }
+    });
+
+    option.series = Array.isArray(option.series) ? seriesList : seriesList[0] || option.series;
+}
+
+function autoResizeChart(option, container) {
+    if (!container) {
+        return;
+    }
+
+    const seriesList = normalizeSeries(option.series);
+    if (seriesList.length === 0) {
+        container.style.height = '360px';
+        return;
+    }
+
+    const hasBarSeries = seriesList.some(series => (series.type || '').toLowerCase() === 'bar');
+    const hasLineSeries = seriesList.some(series => (series.type || '').toLowerCase() === 'line');
+
+    const yCategoryCount = getCategoryCount(option.yAxis);
+    const xCategoryCount = getCategoryCount(option.xAxis);
+
+    let targetHeight = 360;
+
+    if (hasBarSeries && yCategoryCount > 0) {
+        const seriesFactor = Math.min(1.6, 1 + (seriesList.length - 1) * 0.18);
+        const perItemHeight = Math.max(38, Math.min(64, 34 * seriesFactor));
+        targetHeight = Math.max(targetHeight, yCategoryCount * perItemHeight + 120);
+    } else if ((hasBarSeries || hasLineSeries) && xCategoryCount > 18) {
+        const overflowCount = xCategoryCount - 18;
+        targetHeight = Math.max(targetHeight, 360 + overflowCount * 16);
+    }
+
+    container.style.height = `${Math.min(targetHeight, 960)}px`;
+}
+
+function normalizeSeries(seriesCandidate) {
+    if (Array.isArray(seriesCandidate)) {
+        return seriesCandidate;
+    }
+
+    if (seriesCandidate && typeof seriesCandidate === 'object') {
+        return [seriesCandidate];
+    }
+
+    return [];
+}
+
+function getCategoryCount(axisCandidate) {
+    const axes = [];
+
+    if (Array.isArray(axisCandidate)) {
+        axes.push(...axisCandidate);
+    } else if (axisCandidate && typeof axisCandidate === 'object') {
+        axes.push(axisCandidate);
+    }
+
+    let maxCount = 0;
+
+    axes.forEach(axis => {
+        if (!axis || typeof axis !== 'object') {
+            return;
+        }
+
+        const axisType = axis.type ? axis.type.toLowerCase() : 'category';
+        if (axisType !== 'category') {
+            return;
+        }
+
+        if (Array.isArray(axis.data)) {
+            maxCount = Math.max(maxCount, axis.data.length);
+            return;
+        }
+
+        if (Array.isArray(axis.categories)) {
+            maxCount = Math.max(maxCount, axis.categories.length);
+        }
+    });
+
+    return maxCount;
 }
 
