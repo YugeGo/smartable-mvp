@@ -19,6 +19,7 @@ const STORAGE_KEYS = {
 
 // --- 2. State Management ---
 let currentCsvData = '';
+let originalCsvData = '';
 
 // --- 3. Core Functions ---
 
@@ -196,7 +197,11 @@ async function handleSendMessage() {
         const response = await fetch('/api/process', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ data: currentCsvData, command: userCommand })
+            body: JSON.stringify({
+                data: currentCsvData,
+                command: userCommand,
+                originalData: originalCsvData
+            })
         });
 
         if (!response.ok) {
@@ -251,6 +256,7 @@ async function handleFileSelect(event) {
         const finalCsvString = cleanedLines.join('\n');
 
         currentCsvData = finalCsvString;
+        originalCsvData = finalCsvString;
         updateUploadStatus(`✅ ${file.name} · ${formatFileSize(file.size)} 已准备就绪`, 'success');
         addMessage('system', '文件上传成功，数据已准备就绪。现在您可以下达指令了。');
     } catch (error) {

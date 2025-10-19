@@ -17,7 +17,7 @@ export async function handler(event) {
 
     try {
         const body = JSON.parse(event.body || '{}');
-        const { data, command } = body;
+        const { data, command, originalData } = body;
 
         if (!data || !command) {
             return {
@@ -26,10 +26,19 @@ export async function handler(event) {
             };
         }
 
+        const latestData = typeof data === 'string' ? data : '';
+        const initialData = typeof originalData === 'string' && originalData.trim() !== ''
+            ? originalData
+            : latestData;
+
         const prompt = `
 You are a world-class data analyst specializing in spreadsheets and data visualization. You are precise, efficient, and return structured data only.
 
-You will be given spreadsheet data (CSV string) and a command. Follow the command exactly.
+You will receive two CSV inputs:
+1. Latest dataset: the most recent table you produced in this conversation.
+2. Original dataset: the raw data as initially uploaded by the user.
+
+Operate on the latest dataset by default so your work remains consistent across turns. If the latest dataset is missing columns or rows required by the command, you may consult the original dataset and reintroduce the necessary fields.
 
 Your response MUST be a single valid JSON object with two keys:
 1. "result": string of processed data in standard CSV format (header row required).
@@ -37,9 +46,13 @@ Your response MUST be a single valid JSON object with two keys:
 
 The chart object, when not null, must be a valid ECharts option (e.g. include series, xAxis, yAxis, etc.). Do not add explanations or markdown, only the raw JSON.
 
-Data:
+Latest Dataset (current state):
 ---
-${data}
+${latestData}
+---
+Original Dataset (reference only when needed):
+---
+${initialData}
 ---
 Command:
 ---
