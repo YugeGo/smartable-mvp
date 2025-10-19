@@ -25,6 +25,8 @@ const dataPreviewTable = document.getElementById('data-preview-table');
 const dataPreviewFootnote = document.getElementById('data-preview-footnote');
 const chartStyleSelect = document.getElementById('chart-style-select');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
+const chartShortcutsSection = document.getElementById('chart-shortcuts');
+const chartShortcutList = document.getElementById('chart-shortcut-list');
 
 const STORAGE_KEYS = {
     initialMessage: 'smartable:initial-message',
@@ -418,6 +420,7 @@ document.addEventListener('keydown', event => {
 });
 
 initializeThemeControls();
+initializeChartShortcuts();
 initializeOnboarding();
 
 // 兼容旧版布局：如果仍存在传统数据输入列，则隐藏
@@ -454,6 +457,8 @@ function setLoadingState(isLoading) {
             topLoadingBar.classList.remove('active');
         }
     }
+
+    syncChartShortcutButtons(isLoading);
 }
 
 function createSkeletonMessage() {
@@ -677,6 +682,39 @@ const CHART_COLOR_PRESETS_DARK = {
     vibrant: ['#f87171', '#34d399', '#60a5fa', '#facc15', '#a78bfa', '#fb7185'],
     pastel: ['#bfdbfe', '#e9d5ff', '#fecdd3', '#fef3c7', '#bbf7d0', '#f5d0fe']
 };
+
+const CHART_SHORTCUTS = [
+    {
+        id: 'line-trend',
+        label: '趋势折线图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份趋势折线图，自动识别最合适的时间或序号作为横轴，选择关键指标作为纵轴，并返回整理后的CSV及对应的ECharts配置。`
+    },
+    {
+        id: 'bar-compare',
+        label: '对比柱状图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份对比柱状图，挑选最适合的维度作为分组，展示主要度量的对比，同时输出CSV和ECharts配置。`
+    },
+    {
+        id: 'pie-share',
+        label: '占比饼图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份占比饼图，选择有代表性的分类字段计算占比，输出整理后的CSV与ECharts配置。`
+    },
+    {
+        id: 'stacked-area',
+        label: '堆叠面积图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份堆叠面积图，用于展示多个系列随时间的累计趋势，并提供CSV和ECharts配置。`
+    },
+    {
+        id: 'scatter-relation',
+        label: '散点关系图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份散点图，自动选取两个合适的度量字段分析它们的关系，并输出CSV及ECharts配置。`
+    },
+    {
+        id: 'radar-profile',
+        label: '雷达分布图',
+        prompt: tableName => `请基于数据源「${tableName}」生成一份雷达图，挑选可对比的多个指标构成维度，展示各类别的特征，同时返回CSV和ECharts配置。`
+    }
+];
 
 function enhanceChartOption(option, container) {
     if (!option) {
@@ -1083,6 +1121,7 @@ function setActiveTable(tableName) {
     renderDataSourceList();
     updateUploadStatus('数据源已清空，请上传或粘贴新的数据。');
     saveSession();
+    syncChartShortcutButtons();
     return;
     }
 
@@ -1092,6 +1131,7 @@ function setActiveTable(tableName) {
     const { columnCount, rowCount } = getTableStats(workspace[tableName].currentData);
     updateUploadStatus(`📊 当前数据源: ${tableName} · ${columnCount} 列 · ${rowCount} 行`);
     saveSession();
+    syncChartShortcutButtons();
 }
 
 function removeTable(tableName) {
@@ -1117,6 +1157,7 @@ function removeTable(tableName) {
     renderDataSourceList();
     renderActiveTablePreview();
     saveSession();
+    syncChartShortcutButtons();
 }
 
 function saveSession() {
@@ -1172,6 +1213,7 @@ function loadSession() {
 
         renderDataSourceList();
     renderActiveTablePreview();
+        syncChartShortcutButtons();
 
         return true;
     } catch (error) {
@@ -1240,6 +1282,61 @@ function initializeThemeControls() {
             applyDarkMode(isDarkMode);
             rerenderAllCharts();
         });
+    }
+}
+
+function initializeChartShortcuts() {
+    if (!chartShortcutList) {
+        return;
+    }
+
+    chartShortcutList.innerHTML = '';
+
+    CHART_SHORTCUTS.forEach(shortcut => {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.classList.add('chart-shortcut');
+        button.dataset.shortcutId = shortcut.id;
+        button.textContent = shortcut.label;
+        button.addEventListener('click', () => handleChartShortcut(shortcut));
+        chartShortcutList.appendChild(button);
+    });
+
+    syncChartShortcutButtons();
+}
+
+function handleChartShortcut(shortcut) {
+    if (!activeTableName || !workspace[activeTableName]) {
+        updateUploadStatus('请先上传或粘贴一份数据，再使用图表快捷指令。', 'error');
+        if (commandInput) {
+            commandInput.focus();
+        }
+        return;
+    }
+
+    const command = typeof shortcut.prompt === 'function'
+        ? shortcut.prompt(activeTableName)
+        : shortcut.prompt;
+
+    commandInput.value = command;
+    handleSendMessage();
+}
+
+function syncChartShortcutButtons(forceDisable = false) {
+    if (!chartShortcutList) {
+        return;
+    }
+
+    const hasActiveTable = Boolean(activeTableName && workspace[activeTableName]);
+    const shouldDisable = forceDisable || !hasActiveTable;
+
+    chartShortcutList.querySelectorAll('button').forEach(button => {
+        button.disabled = shouldDisable;
+        button.setAttribute('aria-disabled', shouldDisable ? 'true' : 'false');
+    });
+
+    if (chartShortcutsSection) {
+        chartShortcutsSection.classList.toggle('disabled', shouldDisable);
     }
 }
 
