@@ -39,7 +39,7 @@ export async function handler(event) {
 
         const workspacePrompt = buildWorkspacePrompt(normalizedWorkspace, resolvedActiveName);
 
-        const prompt = `
+    const prompt = `
 You are a world-class data analyst specializing in spreadsheets and data visualization. You work inside a multi-table workspace.
 
 Workspace rules:
@@ -51,6 +51,12 @@ Workspace rules:
 - If the user mentions a specific table name that exists in the workspace, treat that table as the command target and set "targetTable" to that name.
 - When a requested field is missing from the latest version but exists in the original version of the same table, reintroduce it from the original data.
 - Prefer working with the latest version to maintain continuity, and consult the original only when necessary.
+
+Performance & limits:
+- Always keep the response efficient. Prefer aggregated/summary outputs over raw detailed rows when the command is broad or expensive.
+- Cap the CSV output to at most 200 data rows (excluding header). If truncation is applied, put a final row with a note like "... (truncated)" or include a short textual hint in non-CSV fields is NOT allowed; instead, keep CSV clean and concise and ensure the header row is present. If truncation is necessary, prioritize the most informative/top categories by measure.
+- Avoid high-cardinality expansions and exhaustive joins. If necessary, choose the top-k categories/series.
+- Choose chart types that are fast to render.
 
 Your response MUST be a single valid JSON object with the following keys:
 1. "result": string of processed data in standard CSV format (header row required). If no tabular result is appropriate, return the unchanged data of the target table.
@@ -66,22 +72,52 @@ ${command}
 ---
 `;
 
+        // Timeout guard to avoid long-running requests on serverless
+        const ac = new AbortController();
+        const timeout = setTimeout(() => ac.abort(), 28000);
+
         const completion = await deepseek.chat.completions.create({
             model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
+            temperature: 0.2,
+            max_tokens: 2000,
             response_format: { type: "json_object" }
-        });
+        }, { signal: ac.signal }).finally(() => clearTimeout(timeout));
 
         const aiResponseJsonString = completion.choices[0].message.content;
+        // Enforce a hard cap on CSV rows to reduce payload and timeout downstream
+        let bodyJson;
+        try {
+            bodyJson = JSON.parse(aiResponseJsonString);
+            if (typeof bodyJson?.result === 'string') {
+                const lines = bodyJson.result.split('\n');
+                if (lines.length > 201) { // header + 200 rows
+                    const header = lines[0];
+                    const trimmed = [header, ...lines.slice(1, 201)];
+                    bodyJson.result = trimmed.join('\n');
+                }
+            }
+        } catch (_) {
+            // If parse fails, just pass through the original content
+            bodyJson = null;
+        }
 
         return {
             statusCode: 200,
             headers: { "Content-Type": "application/json" },
-            body: aiResponseJsonString
+            body: bodyJson ? JSON.stringify(bodyJson) : aiResponseJsonString
         };
 
     } catch (error) {
         console.error("Error calling DeepSeek API:", error);
+        // Surface gateway timeout to client when aborted
+        if (error?.name === 'AbortError') {
+            return {
+                statusCode: 504,
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ result: "服务响应超时，请简化指令或稍后再试。", chart: null })
+            };
+        }
         return {
             statusCode: 500,
             headers: { "Content-Type": "application/json" },
