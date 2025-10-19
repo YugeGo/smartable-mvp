@@ -46,8 +46,7 @@ const dtTopKApply = document.getElementById('dt-topk-apply');
 const dtUndo = document.getElementById('dt-undo');
 const dtExportCsv = document.getElementById('dt-export-csv');
 const dtReset = document.getElementById('dt-reset');
-const dtDropEmpty = document.getElementById('dt-drop-empty');
-const dtDedupCol = document.getElementById('dt-dedup-col');
+const dtHint = document.getElementById('dt-hint');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
@@ -1154,6 +1153,9 @@ function renderActiveTablePreview() {
 	// 更新工具条列选择
 	populateDataToolsColumns(extractHeaders(fullCsv));
 
+	// 情景式提示检测（当前列）
+	refreshDataHint();
+
 	if (dataPreviewFootnote) {
 		if (truncated) {
 			const totalRows = Math.max(rows.length - 1, 0);
@@ -1673,6 +1675,51 @@ function dedupByCurrentColumn() {
 	writeActiveCsv(headers, result);
 }
 
+// 检测当前列的空值与重复，显示提示
+function refreshDataHint() {
+	if (!dtHint) return;
+	if (!activeTableName || !workspace[activeTableName]) { dtHint.classList.remove('active'); dtHint.innerHTML=''; return; }
+	const { headers, rows } = getActiveCsvRows();
+	if (!headers.length) { dtHint.classList.remove('active'); dtHint.innerHTML=''; return; }
+	const idx = Number(dtColumnSelect?.value || 0);
+	const colName = headers[idx] || `第${idx+1}列`;
+
+	let emptyCount = 0;
+	const seen = new Set();
+	let dupCount = 0;
+	rows.forEach(r => {
+		const v = (r[idx] ?? '').trim();
+		if (v === '') emptyCount++;
+		if (seen.has(v)) dupCount++; else seen.add(v);
+	});
+
+	if (emptyCount === 0 && dupCount === 0) {
+		dtHint.classList.remove('active');
+		dtHint.innerHTML = '';
+		return;
+	}
+
+	const icon = '<span class="hint-icon" aria-hidden="true">💡</span>';
+	const parts = [];
+	if (emptyCount > 0) parts.push(`${colName} 存在 ${emptyCount} 个空值`);
+	if (dupCount > 0) parts.push(`${colName} 发现 ${dupCount} 个重复`);
+
+	dtHint.innerHTML = `${icon}<span class="hint-text">${parts.join('，')}，需要清理吗？</span>
+		<span class="hint-actions">
+		  ${emptyCount>0?'<button type="button" class="hint-btn" id="hint-drop-empty">删除空值</button>':''}
+		  ${dupCount>0?'<button type="button" class="hint-btn" id="hint-dedup">按列去重</button>':''}
+		  <button type="button" class="hint-btn" id="hint-dismiss">忽略</button>
+		</span>`;
+	dtHint.classList.add('active');
+
+	const dropBtn = document.getElementById('hint-drop-empty');
+	if (dropBtn) dropBtn.addEventListener('click', () => { dropEmptyInCurrentColumn(); dtHint.classList.remove('active'); });
+	const dedupBtn = document.getElementById('hint-dedup');
+	if (dedupBtn) dedupBtn.addEventListener('click', () => { dedupByCurrentColumn(); dtHint.classList.remove('active'); });
+	const dismissBtn = document.getElementById('hint-dismiss');
+	if (dismissBtn) dismissBtn.addEventListener('click', () => { dtHint.classList.remove('active'); });
+}
+
 // 导出当前预览为CSV
 function exportCurrentPreviewCsv() {
 	if (!activeTableName || !workspace[activeTableName]) return;
@@ -1711,8 +1758,10 @@ if (dtUndo) dtUndo.addEventListener('click', undoLastChange);
 if (dtRefreshColsBtn) dtRefreshColsBtn.addEventListener('click', () => {
 	const csv = workspace[activeTableName]?.currentData || '';
 	populateDataToolsColumns(extractHeaders(csv));
+	refreshDataHint();
 });
 if (dtExportCsv) dtExportCsv.addEventListener('click', exportCurrentPreviewCsv);
 if (dtReset) dtReset.addEventListener('click', resetToOriginal);
-if (dtDropEmpty) dtDropEmpty.addEventListener('click', dropEmptyInCurrentColumn);
-if (dtDedupCol) dtDedupCol.addEventListener('click', dedupByCurrentColumn);
+
+// 列选择变化时刷新提示
+if (dtColumnSelect) dtColumnSelect.addEventListener('change', refreshDataHint);
