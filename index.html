@@ -10,39 +10,38 @@
     <script src="script.js" defer></script>
 </head>
 <body>
-    <main class="app-container">
-        <header>
-            <h1>智表 (Smartable) - AI表格助手 MVP</h1>
-        </header>
-        <section class="workspace-grid">
-            <div id="data-input">
-                <!--
-Inside this div, first add an `<h2>` with the text "数据输入".
-Then, add a `<textarea>` with id `data-paste-area` and a new placeholder: "请将Excel/CSV数据粘贴到这里... 或点击下方按钮上传文件".
-Below the textarea, create a container `div` with class `file-upload-container`.
-Inside this container, add two elements:
-1. An `<input>` of type "file", with id `file-upload-input`. It should accept `.xlsx, .xls, .csv` files.
-2. A `<label>` that is linked to `file-upload-input`. The label should have a class `file-upload-label` and the text "点击上传文件".
+    <!--
+[Instruction Start]
+
+Create a conversational UI layout for a chat application.
+
+1.  **Main Container:**
+    *   Create a main `div` with the id `chat-container`.
+
+2.  **Message List:**
+    *   Inside `chat-container`, create a `div` with the id `message-list`. This will be where all chat bubbles are appended.
+    *   For now, add a sample "system message" div inside it to welcome the user. It should have a class `message system-message` and contain the text "欢迎使用智表！请粘贴或上传您的数据，然后输入指令。".
+
+3.  **Input Area:**
+    *   Below `message-list`, create a `div` with the id `input-area`. This should be a form-like container at the bottom.
+    *   Inside `input-area`, add the following elements in order:
+        *   A `button` with id `upload-btn` and class `input-btn`. It should contain an icon or text for "upload". Let's use the text "📎" for now.
+        *   An actual `<input type="file">` with id `file-upload-input`, which should be hidden.
+        *   A `<textarea>` with id `command-input` for the user to type their message. Give it a placeholder "请输入指令...".
+        *   A `button` with id `send-btn` and class `input-btn`. It should contain an icon or text for "send". Let's use the text "➢" for now.
+
+[Instruction End]
 -->
-                <h2>数据输入</h2>
-                <textarea id="data-paste-area" placeholder="请将Excel/CSV数据粘贴到这里... 或点击下方按钮上传文件"></textarea>
-                <div class="file-upload-container">
-                    <input type="file" id="file-upload-input" accept=".xlsx, .xls, .csv" />
-                    <label for="file-upload-input" class="file-upload-label">点击上传文件</label>
-                </div>
-            </div>
-            <div id="ai-command">
-                <h2>AI 指令</h2>
-                <textarea id="command-input" placeholder="请输入你的指令：例如，筛选出所有迟到的人..."></textarea>
-                <button id="execute-btn">执行指令</button>
-            </div>
-            <div id="result-output">
-                <h2>结果输出</h2>
-                <h3>AI处理结果</h3>
-                <div id="result-display"></div>
-                <button id="copy-btn">一键复制结果</button>
-            </div>
-        </section>
-    </main>
+    <div id="chat-container">
+        <div id="message-list">
+            <div class="message system-message">欢迎使用智表！请粘贴或上传您的数据，然后输入指令。</div>
+        </div>
+        <div id="input-area">
+            <button id="upload-btn" class="input-btn">📎</button>
+            <input type="file" id="file-upload-input" style="display: none;">
+            <textarea id="command-input" placeholder="请输入指令..."></textarea>
+            <button id="send-btn" class="input-btn">➢</button>
+        </div>
+    </div>
 </body>
 </html>
