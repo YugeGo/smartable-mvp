@@ -100,18 +100,20 @@ function addMessage(sender, content) {
  * @param {string} csvString The CSV data to convert.
  */
 async function downloadAsExcel(csvString) {
-    // 这是正确的代码
+   // 这是最终的、最可靠的代码
 try {
-    // Step 1: Create a new, empty worksheet
-    const worksheet = XLSX.utils.aoa_to_sheet([]); // `aoa_to_sheet` creates a sheet from an array of arrays
-    
-    // Step 2: Use `sheet_add_csv` to parse the CSV string and populate the empty sheet
-    XLSX.utils.sheet_add_csv(worksheet, csvString, { origin: "A1" });
+    // Step 1: Manually parse the CSV string into a 2D array (Array of Arrays)
+    const rows = csvString.trim().split('\n');
+    const dataAsArrayOfArrays = rows.map(row => row.split(','));
 
-    // Step 3: Proceed as before
+    // Step 2: Create a worksheet from this 2D array
+    const worksheet = XLSX.utils.aoa_to_sheet(dataAsArrayOfArrays);
+
+    // Step 3: Proceed as before to create and download the workbook
     const workbook = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(workbook, worksheet, "处理结果");
     XLSX.writeFile(workbook, "智表处理结果.xlsx");
+
 } catch(error) {
     console.error("Failed to download Excel file:", error);
     alert("下载失败，请检查控制台错误。");
