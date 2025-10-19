@@ -729,57 +729,6 @@ body.dark-mode .data-tools button {
 	color: var(--text-primary);
 }
 
-/* 高级筛选 */
-.advanced-filters {
-	margin-top: 0.5rem;
-	border-radius: 14px;
-	border: 1px solid rgba(148, 163, 184, 0.28);
-	background: rgba(248, 250, 252, 0.9);
-	padding: 0.75rem;
-	box-shadow: 0 8px 18px rgba(148, 163, 184, 0.18);
-}
-
-body.dark-mode .advanced-filters {
-	background: rgba(17, 24, 39, 0.9);
-	border-color: rgba(148, 163, 184, 0.26);
-}
-
-.adv-header {
-	display: flex;
-	align-items: center;
-	justify-content: space-between;
-	margin-bottom: 0.5rem;
-}
-
-.adv-actions {
-	display: flex;
-	gap: 0.5rem;
-}
-
-.adv-conditions {
-	display: flex;
-	flex-direction: column;
-	gap: 0.5rem;
-	margin-bottom: 0.5rem;
-}
-
-.adv-cond-row {
-	display: flex;
-	flex-wrap: wrap;
-	align-items: center;
-	gap: 0.5rem;
-}
-
-.adv-cond-row .remove-cond {
-	color: #b91c1c;
-}
-
-.adv-footer {
-	display: flex;
-	justify-content: flex-end;
-	gap: 0.5rem;
-}
-
 #chart-shortcuts {
 	display: flex;
 	flex-direction: column;
