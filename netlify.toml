@@ -1,2 +1,9 @@
 [build]
+  command = "npm run build"
+  publish = "dist"
   functions = "api/"
+
+[functions]
+  # 使用 esbuild 打包以支持 ESM import/export 的函数源码
+  node_bundler = "esbuild"
+  external_node_modules = ["openai"]
