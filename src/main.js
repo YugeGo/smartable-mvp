@@ -2,6 +2,7 @@
 import '../style.css';
 import * as echarts from 'echarts';
 import * as XLSX from 'xlsx';
+import Papa from 'papaparse';
 
 // 让调试更方便（可选）：在全局挂载
 window.echarts = echarts;
@@ -82,8 +83,36 @@ let workspace = {};
 // The name of the table currently being viewed/edited.
 let activeTableName = '';
 let isDarkMode = false;
-// Keep a simple per-table history for one-step undo
-const tableHistory = new Map(); // tableName -> [prevCsv]
+// 多步撤销/重做栈
+const UNDO_LIMIT = 20;
+const tableUndoStack = new Map(); // tableName -> string[]
+const tableRedoStack = new Map(); // tableName -> string[]
+
+// --- CSV 解析/序列化辅助（基于 Papa Parse） ---
+function parseCsvToAoA(csvString) {
+	if (!csvString || typeof csvString !== 'string' || csvString.trim() === '') {
+		return [];
+	}
+	const res = Papa.parse(csvString, {
+		delimiter: '', // 自动检测
+		newline: '', // 自动检测
+		skipEmptyLines: false
+	});
+	if (res.errors && res.errors.length > 0) {
+		console.warn('CSV parse errors:', res.errors.slice(0, 3));
+	}
+	return Array.isArray(res.data) ? res.data : [];
+}
+
+function unparseAoAToCsv(aoa) {
+	if (!Array.isArray(aoa)) return '';
+	try {
+		return Papa.unparse(aoa, { newline: '\n' });
+	} catch (e) {
+		console.warn('CSV unparse failed, fallback to join:', e);
+		return aoa.map(row => (Array.isArray(row) ? row.join(',') : String(row ?? ''))).join('\n');
+	}
+}
 
 var CHART_COLOR_PRESETS = Object.freeze({
 	classic: ['#2563eb', '#a855f7', '#14b8a6', '#f97316', '#facc15', '#ec4899'],
@@ -160,33 +189,30 @@ function renderChart(chartOption, containerElement) {
 
 function renderCsvAsTable(csvString, containerElement) {
 	containerElement.innerHTML = '';
-
 	try {
-		const rows = csvString.trim().split('\n');
-		if (rows.length === 0 || rows[0].trim() === '') {
-			containerElement.textContent = csvString;
+		const aoa = parseCsvToAoA(csvString);
+		if (!aoa || aoa.length === 0 || !Array.isArray(aoa[0]) || aoa[0].length === 0) {
+			containerElement.textContent = csvString || '';
 			return;
 		}
-
 		const table = document.createElement('table');
 		const thead = document.createElement('thead');
 		const tbody = document.createElement('tbody');
 
 		const headerRow = document.createElement('tr');
-		const headers = rows[0].split(',');
-		headers.forEach(headerText => {
+		aoa[0].forEach(headerText => {
 			const th = document.createElement('th');
-			th.textContent = headerText.trim();
+			th.textContent = String(headerText ?? '').trim();
 			headerRow.appendChild(th);
 		});
 		thead.appendChild(headerRow);
 
-		for (let i = 1; i < rows.length; i += 1) {
+		for (let i = 1; i < aoa.length; i += 1) {
 			const dataRow = document.createElement('tr');
-			const cells = rows[i].split(',');
+			const cells = Array.isArray(aoa[i]) ? aoa[i] : [aoa[i]];
 			cells.forEach(cellText => {
 				const td = document.createElement('td');
-				td.textContent = cellText.trim();
+				td.textContent = String(cellText ?? '').trim();
 				dataRow.appendChild(td);
 			});
 			tbody.appendChild(dataRow);
@@ -197,7 +223,7 @@ function renderCsvAsTable(csvString, containerElement) {
 		containerElement.appendChild(table);
 	} catch (error) {
 		console.error('Failed to render CSV:', error);
-		containerElement.textContent = csvString;
+		containerElement.textContent = csvString || '';
 	}
 }
 
@@ -281,10 +307,8 @@ function addMessage(sender, content, doSave = true) {
 
 async function downloadAsExcel(csvString) {
 	try {
-		const rows = csvString.trim().split('\n');
-		const dataAsArrayOfArrays = rows.map(row => row.split(','));
-
-		const worksheet = XLSX.utils.aoa_to_sheet(dataAsArrayOfArrays);
+		const aoa = parseCsvToAoA(csvString);
+		const worksheet = XLSX.utils.aoa_to_sheet(aoa);
 		const workbook = XLSX.utils.book_new();
 		XLSX.utils.book_append_sheet(workbook, worksheet, '处理结果');
 		XLSX.writeFile(workbook, '智表处理结果.xlsx');
@@ -328,6 +352,7 @@ async function handleSendMessage() {
 				messageList.removeChild(skeletonMessage);
 			}
 			addMessage('system', '后端处理超时，请稍后重试或简化指令后再试。');
+			try { showErrorSuggestions('timeout', userCommand); } catch (_) {}
 			updateUploadStatus('⏳ 服务响应超时，请稍后重试。', 'error');
 			return;
 		}
@@ -385,11 +410,60 @@ async function handleSendMessage() {
 			messageList.removeChild(skeletonMessage);
 		}
 		addMessage('system', '处理时出现错误，请检查网络或联系管理员。');
+		try { showErrorSuggestions('error', userCommand); } catch (_) {}
 		updateUploadStatus('请求失败，请稍后再试。', 'error');
 	} finally {
 		setLoadingState(false);
 		commandInput.focus();
 	}
+}
+
+// 错误/超时后的可恢复建议
+function showErrorSuggestions(reason, originalCommand) {
+	if (!messageList) return;
+	const container = document.createElement('div');
+	container.classList.add('message', 'ai-message');
+	const title = document.createElement('p');
+	title.textContent = reason === 'timeout' ? '响应超时，试试这些方式更快得到结果：' : '请求出错了，可以尝试以下方式：';
+	container.appendChild(title);
+	const actions = document.createElement('div');
+	actions.classList.add('action-buttons');
+
+	const retry = document.createElement('button');
+	retry.classList.add('action-btn');
+	retry.textContent = '🔁 立即重试';
+	retry.addEventListener('click', () => {
+		commandInput.value = originalCommand || commandInput.value;
+		handleSendMessage();
+		container.remove();
+	});
+	actions.appendChild(retry);
+
+	const topk = document.createElement('button');
+	topk.classList.add('action-btn');
+	topk.textContent = '📉 仅输出Top-10汇总';
+	topk.addEventListener('click', () => {
+		const cmd = (originalCommand || commandInput.value || '').trim();
+		commandInput.value = `${cmd}\n请仅返回包含前10条的汇总表，不需要图表；严格保持列名一致，避免新增列。`;
+		handleSendMessage();
+		container.remove();
+	});
+	actions.appendChild(topk);
+
+	const headerOnly = document.createElement('button');
+	headerOnly.classList.add('action-btn');
+	headerOnly.textContent = '🧾 仅表头+汇总';
+	headerOnly.addEventListener('click', () => {
+		const cmd = (originalCommand || commandInput.value || '').trim();
+		commandInput.value = `${cmd}\n如果运算量较大，请仅返回表头行和小型汇总示例，避免完整数据。`;
+		handleSendMessage();
+		container.remove();
+	});
+	actions.appendChild(headerOnly);
+
+	container.appendChild(actions);
+	messageList.appendChild(container);
+	messageList.scrollTop = messageList.scrollHeight;
 }
 
 async function handleFileSelect(event) {
@@ -408,9 +482,11 @@ async function handleFileSelect(event) {
 		const worksheet = workbook.Sheets[firstSheetName];
 
 		const rawCsvString = XLSX.utils.sheet_to_csv(worksheet);
-		const finalCsvString = sanitizeCsvString(rawCsvString);
+		// 使用 Papa 解析为 AoA 并标准化为 CSV 字符串
+		const aoa = parseCsvToAoA(rawCsvString);
+		const finalCsvString = unparseAoAToCsv(aoa);
 
-		if (!finalCsvString) {
+		if (!finalCsvString || finalCsvString.trim() === '') {
 			throw new Error('Empty dataset after sanitizing');
 		}
 
@@ -419,7 +495,8 @@ async function handleFileSelect(event) {
 			throw new Error('Missing header row');
 		}
 
-		const rowCount = Math.max(finalCsvString.split('\n').length - 1, 0);
+		const totalAoa = parseCsvToAoA(finalCsvString);
+		const rowCount = Math.max(totalAoa.length - 1, 0);
 		const tableName = file.name;
 
 		workspace[tableName] = {
@@ -490,6 +567,9 @@ if (newSessionBtn) {
 document.addEventListener('keydown', event => {
 	if (event.key === 'Escape' && dataInputPanel && dataInputPanel.classList.contains('open')) {
 		closeDataInputPanel();
+	}
+	if (event.key === 'Escape' && guideOverlay && !guideOverlay.hidden) {
+		closeGuide();
 	}
 });
 
@@ -593,10 +673,36 @@ function startGuide() {
 	applyGuideStep();
 }
 
+let lastFocusedElement = null;
+let guideTrapHandler = null;
 function openGuideOverlay() {
 	if (!guideOverlay) return;
 	guideOverlay.hidden = false;
 	guideOverlay.setAttribute('aria-hidden', 'false');
+	// 保存并设置初始焦点
+	lastFocusedElement = document.activeElement;
+	const focusables = guideOverlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])');
+	const focusList = Array.from(focusables).filter(el => !el.hasAttribute('disabled'));
+	if (focusList.length) {
+		try { focusList[0].focus(); } catch (_) {}
+	}
+	// 焦点陷阱与 Esc
+	guideTrapHandler = (e) => {
+		if (e.key === 'Tab') {
+			const fsAll = Array.from(guideOverlay.querySelectorAll('button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])')).filter(el => !el.hasAttribute('disabled'));
+			if (fsAll.length === 0) return;
+			const first = fsAll[0];
+			const last = fsAll[fsAll.length - 1];
+			if (e.shiftKey) {
+				if (document.activeElement === first) { e.preventDefault(); last.focus(); }
+			} else {
+				if (document.activeElement === last) { e.preventDefault(); first.focus(); }
+			}
+		} else if (e.key === 'Escape') {
+			closeGuide();
+		}
+	};
+	document.addEventListener('keydown', guideTrapHandler);
 }
 
 function closeGuide() {
@@ -604,6 +710,13 @@ function closeGuide() {
 	removeGuideHighlight();
 	guideOverlay.hidden = true;
 	guideOverlay.setAttribute('aria-hidden', 'true');
+	if (guideTrapHandler) {
+		document.removeEventListener('keydown', guideTrapHandler);
+		guideTrapHandler = null;
+	}
+	if (lastFocusedElement && typeof lastFocusedElement.focus === 'function') {
+		try { lastFocusedElement.focus(); } catch (_) {}
+	}
 }
 
 function moveGuide(direction) {
@@ -818,7 +931,9 @@ function handlePasteSubmit() {
 		return;
 	}
 
-	const sanitized = sanitizeCsvString(rawInput);
+	// 使用 Papa 解析并标准化
+	const aoa = Papa.parse(rawInput, { delimiter: '', newline: '', skipEmptyLines: true }).data;
+	const sanitized = unparseAoAToCsv(aoa);
 	if (!sanitized) {
 		updateUploadStatus('粘贴内容为空或格式不正确，请确认后重试。', 'error');
 		dataPasteArea.focus();
@@ -832,7 +947,8 @@ function handlePasteSubmit() {
 		return;
 	}
 
-	const rowCount = Math.max(sanitized.split('\n').length - 1, 0);
+	const aoaFull = parseCsvToAoA(sanitized);
+	const rowCount = Math.max(aoaFull.length - 1, 0);
 	const tableName = `粘贴数据-${new Date().toLocaleTimeString()}`;
 
 	workspace[tableName] = {
@@ -854,38 +970,22 @@ function extractHeaders(csvString) {
 		return [];
 	}
 
-	const trimmed = csvString.trim();
-	if (!trimmed) {
-		return [];
-	}
-
-	const [headerLine] = trimmed.split('\n');
-	if (!headerLine) {
-		return [];
-	}
-
-	return headerLine
-		.split(',')
-		.map(header => header.trim())
-		.filter(header => header.length > 0);
+	const aoa = parseCsvToAoA(csvString);
+	if (!aoa || aoa.length === 0) return [];
+	const headers = Array.isArray(aoa[0]) ? aoa[0] : [];
+	return headers.map(h => String(h ?? '').trim()).filter(h => h.length > 0);
 }
 
 function sanitizeCsvString(rawCsvString) {
 	if (!rawCsvString || typeof rawCsvString !== 'string') {
 		return '';
 	}
-
-	const normalized = rawCsvString
-		.replace(/\r\n/g, '\n')
-		.replace(/\r/g, '\n')
-		.replace(/\t/g, ',');
-
-	const cleanedLines = normalized
-		.split('\n')
-		.map(line => line.replace(/,+$/, ''))
-		.filter(line => line.trim() !== '');
-
-	return cleanedLines.join('\n');
+	// 仅规范换行并去除首尾空行，避免破坏引号/制表符
+	const normalized = rawCsvString.replace(/\r\n?/g, '\n');
+	const lines = normalized.split('\n');
+	while (lines.length && lines[0].trim() === '') lines.shift();
+	while (lines.length && lines[lines.length - 1].trim() === '') lines.pop();
+	return lines.join('\n');
 }
 
 function findMissingColumns(expectedSchema, actualSchema) {
@@ -1240,7 +1340,8 @@ function getTableStats(csvString) {
 	}
 
 	const headers = extractHeaders(csvString);
-	const rowCount = Math.max(csvString.split('\n').length - 1, 0);
+	const aoa = parseCsvToAoA(csvString);
+	const rowCount = Math.max(aoa.length - 1, 0);
 	return {
 		columnCount: headers.length,
 		rowCount
@@ -1273,16 +1374,13 @@ function renderActiveTablePreview() {
 		}
 		return;
 	}
-	const rows = fullCsv ? fullCsv.trim().split('\n') : [];
+	const aoa = parseCsvToAoA(fullCsv);
 	const previewRowLimit = 120;
-	const hasHeader = rows.length > 0;
-
-	let previewCsv = fullCsv;
 	let truncated = false;
-	if (hasHeader && rows.length - 1 > previewRowLimit) {
-		const header = rows[0];
-		const limitedRows = rows.slice(1, previewRowLimit + 1);
-		previewCsv = [header, ...limitedRows].join('\n');
+	let previewCsv = fullCsv;
+	if (Array.isArray(aoa) && aoa.length > 1 && aoa.length - 1 > previewRowLimit) {
+		const limited = [aoa[0], ...aoa.slice(1, previewRowLimit + 1)];
+		previewCsv = unparseAoAToCsv(limited);
 		truncated = true;
 	}
 
@@ -1298,7 +1396,7 @@ function renderActiveTablePreview() {
 
 	if (dataPreviewFootnote) {
 		if (truncated) {
-			const totalRows = Math.max(rows.length - 1, 0);
+			const totalRows = Math.max(aoa.length - 1, 0);
 			dataPreviewFootnote.textContent = `仅展示前 ${previewRowLimit} 行（共 ${totalRows} 行）`;
 		} else {
 			dataPreviewFootnote.textContent = '';
@@ -1388,7 +1486,8 @@ function setActiveTable(tableName) {
 	saveSession();
 	syncChartShortcutButtons();
 	// 清空该表的历史（新活跃表）
-	tableHistory.set(tableName, []);
+	tableUndoStack.set(tableName, []);
+	tableRedoStack.set(tableName, []);
 }
 
 function removeTable(tableName) {
@@ -1468,7 +1567,8 @@ function loadSession() {
 		if (activeTableName && workspace[activeTableName]) {
 			const tableData = workspace[activeTableName].currentData;
 			const headers = extractHeaders(tableData);
-			const rowCount = Math.max(tableData.split('\n').length - 1, 0);
+			const aoa = parseCsvToAoA(tableData);
+			const rowCount = Math.max(aoa.length - 1, 0);
 			updateUploadStatus(`✅ 会话已恢复: ${activeTableName} · ${headers.length} 列 · ${rowCount} 行`, 'success');
 		} else {
 			updateUploadStatus('✅ 会话已恢复，请在上方选择或上传数据源。', 'success');
@@ -1476,8 +1576,8 @@ function loadSession() {
 
 		renderDataSourceList();
 		syncChartShortcutButtons();
-		// 初始化历史
-		Object.keys(workspace).forEach(name => tableHistory.set(name, []));
+	// 初始化历史
+	Object.keys(workspace).forEach(name => { tableUndoStack.set(name, []); tableRedoStack.set(name, []); });
 
 		return true;
 	} catch (error) {
@@ -1738,9 +1838,11 @@ async function loadSampleDataset(fileName) {
 		const resp = await fetch(`/samples/${fileName}`);
 		if (!resp.ok) throw new Error(`Failed to fetch ${fileName}`);
 		const text = await resp.text();
-		const sanitized = sanitizeCsvString(text);
+		const aoa = Papa.parse(text, { delimiter: '', newline: '', skipEmptyLines: true }).data;
+		const sanitized = unparseAoAToCsv(aoa);
 		const headers = extractHeaders(sanitized);
-		const rowCount = Math.max(sanitized.split('\n').length - 1, 0);
+		const totalAoa = parseCsvToAoA(sanitized);
+		const rowCount = Math.max(totalAoa.length - 1, 0);
 		const tableName = `样例-${fileName}`;
 		workspace[tableName] = { originalData: sanitized, currentData: sanitized };
 		messages = [];
@@ -1789,22 +1891,25 @@ function populateDataToolsColumns(headers) {
 
 function getActiveCsvRows() {
 	const csv = workspace[activeTableName]?.currentData || '';
-	const lines = csv.trim() ? csv.trim().split('\n') : [];
-	if (lines.length === 0) return { headers: [], rows: [] };
-	const headers = lines[0].split(',').map(s => s.trim());
-	const rows = lines.slice(1).map(line => line.split(',').map(s => s.trim()));
+	const aoa = parseCsvToAoA(csv);
+	if (!aoa || aoa.length === 0) return { headers: [], rows: [] };
+	const headers = Array.isArray(aoa[0]) ? aoa[0].map(s => String(s ?? '').trim()) : [];
+	const rows = aoa.slice(1).map(r => (Array.isArray(r) ? r.map(s => String(s ?? '').trim()) : [String(r ?? '').trim()]));
 	return { headers, rows };
 }
 
 function writeActiveCsv(headers, rows) {
-	const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
-	// push history
-	const hist = tableHistory.get(activeTableName) || [];
+	const aoa = [headers, ...rows];
+	const csv = unparseAoAToCsv(aoa);
+	// push to undo stack and clear redo
+	const undo = tableUndoStack.get(activeTableName) || [];
 	const prev = workspace[activeTableName].currentData;
-	hist.push(prev);
-	// 只保留一层撤销
-	if (hist.length > 1) hist.shift();
-	tableHistory.set(activeTableName, hist);
+	if (prev && typeof prev === 'string') {
+		undo.push(prev);
+		if (undo.length > UNDO_LIMIT) undo.shift();
+		tableUndoStack.set(activeTableName, undo);
+	}
+	tableRedoStack.set(activeTableName, []);
 
 	workspace[activeTableName].currentData = csv;
 	renderActiveTablePreview();
@@ -1866,11 +1971,35 @@ function applyTopK() {
 }
 
 function undoLastChange() {
-	const hist = tableHistory.get(activeTableName) || [];
-	if (hist.length === 0) return;
-	const prev = hist.pop();
-	tableHistory.set(activeTableName, hist);
+	const undo = tableUndoStack.get(activeTableName) || [];
+	if (undo.length === 0) return;
+	const current = workspace[activeTableName].currentData;
+	const prev = undo.pop();
+	tableUndoStack.set(activeTableName, undo);
+	const redo = tableRedoStack.get(activeTableName) || [];
+	if (current && typeof current === 'string') {
+		redo.push(current);
+		if (redo.length > UNDO_LIMIT) redo.shift();
+		tableRedoStack.set(activeTableName, redo);
+	}
 	workspace[activeTableName].currentData = prev;
+	renderActiveTablePreview();
+	saveSession();
+}
+
+function redoLastChange() {
+	const redo = tableRedoStack.get(activeTableName) || [];
+	if (redo.length === 0) return;
+	const current = workspace[activeTableName].currentData;
+	const next = redo.pop();
+	tableRedoStack.set(activeTableName, redo);
+	const undo = tableUndoStack.get(activeTableName) || [];
+	if (current && typeof current === 'string') {
+		undo.push(current);
+		if (undo.length > UNDO_LIMIT) undo.shift();
+		tableUndoStack.set(activeTableName, undo);
+	}
+	workspace[activeTableName].currentData = next;
 	renderActiveTablePreview();
 	saveSession();
 }
@@ -1966,11 +2095,13 @@ function resetToOriginal() {
 	if (!activeTableName || !workspace[activeTableName]) return;
 	const original = workspace[activeTableName].originalData || '';
 	if (!original) return;
-	const headers = extractHeaders(original);
-	const rows = original.trim().split('\n').slice(1).map(l => l.split(',').map(s => s.trim()));
+	const aoa = parseCsvToAoA(original);
+	const headers = Array.isArray(aoa[0]) ? aoa[0].map(s => String(s ?? '').trim()) : [];
+	const rows = aoa.slice(1).map(r => (Array.isArray(r) ? r.map(s => String(s ?? '').trim()) : [String(r ?? '').trim()]));
 	writeActiveCsv(headers, rows);
 	// 清空历史，避免再撤销回到变更前
-	tableHistory.set(activeTableName, []);
+	tableUndoStack.set(activeTableName, []);
+	tableRedoStack.set(activeTableName, []);
 	updateUploadStatus('已重置为原始数据。', 'success');
 }
 
@@ -1981,6 +2112,8 @@ if (dtSortAsc) dtSortAsc.addEventListener('click', () => applySortAscDesc('asc')
 if (dtSortDesc) dtSortDesc.addEventListener('click', () => applySortAscDesc('desc'));
 if (dtTopKApply) dtTopKApply.addEventListener('click', applyTopK);
 if (dtUndo) dtUndo.addEventListener('click', undoLastChange);
+const dtRedo = document.getElementById('dt-redo');
+if (dtRedo) dtRedo.addEventListener('click', redoLastChange);
 if (dtRefreshColsBtn) dtRefreshColsBtn.addEventListener('click', () => {
 	const csv = workspace[activeTableName]?.currentData || '';
 	populateDataToolsColumns(extractHeaders(csv));
