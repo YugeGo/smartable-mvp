@@ -19,14 +19,17 @@
             <section id="product-intro" class="sidebar-section" aria-label="产品介绍">
                 <header class="sidebar-section-header">
                     <h2>能帮你做什么？</h2>
+                    <button type="button" class="section-toggle" data-target="product-intro">▾</button>
                 </header>
-                <p class="intro-copy">智表是一个“对话式表格助手”。不会写公式，也能把数据清洗、统计、出图、导出一气呵成。</p>
-                <div class="intro-chips" role="list">
-                    <button type="button" class="intro-chip" data-sample="sales_weekly.csv" data-template="line-trend">周报趋势</button>
-                    <button type="button" class="intro-chip" data-sample="support_chat.csv" data-template="bar-compare">客服统计</button>
-                    <button type="button" class="intro-chip" data-sample="finance_monthly.csv" data-template="pie-share">费用占比</button>
+                <div class="section-body">
+                    <p class="intro-copy">智表是一个“对话式表格助手”。不会写公式，也能把数据清洗、统计、出图、导出一气呵成。</p>
+                    <div class="intro-chips" role="list">
+                        <button type="button" class="intro-chip" data-sample="sales_weekly.csv" data-template="line-trend">周报趋势</button>
+                        <button type="button" class="intro-chip" data-sample="support_chat.csv" data-template="bar-compare">客服统计</button>
+                        <button type="button" class="intro-chip" data-sample="finance_monthly.csv" data-template="pie-share">费用占比</button>
+                    </div>
+                    <p class="intro-note">点一个场景，马上上手；或直接上传/粘贴你的数据开始对话。</p>
                 </div>
-                <p class="intro-note">点一个场景，马上上手；或直接上传/粘贴你的数据开始对话。</p>
             </section>
             <section id="data-preview" aria-live="polite" aria-label="当前数据预览" class="sidebar-section empty">
                 <header class="preview-header">
@@ -63,34 +66,40 @@
             <section id="guide-section" class="sidebar-section" aria-label="使用指南">
                 <header class="sidebar-section-header">
                     <h2>使用指南</h2>
+                    <button type="button" class="section-toggle" data-target="guide-section">▾</button>
                 </header>
-                <div class="guide-controls">
-                    <label for="guide-scenario">选择场景：</label>
-                    <select id="guide-scenario" aria-label="选择引导场景">
-                        <option value="quick-start">一分钟上手</option>
-                    </select>
-                    <button type="button" id="guide-start-btn" class="guide-start">开始引导</button>
+                <div class="section-body">
+                    <div class="guide-controls">
+                        <label for="guide-scenario">选择场景：</label>
+                        <select id="guide-scenario" aria-label="选择引导场景">
+                            <option value="quick-start">一分钟上手</option>
+                        </select>
+                        <button type="button" id="guide-start-btn" class="guide-start">开始引导</button>
+                    </div>
+                    <p class="guide-note">按照场景一步步带你完成关键操作。</p>
                 </div>
-                <p class="guide-note">按照场景一步步带你完成关键操作。</p>
             </section>
             <section id="chart-shortcuts" class="sidebar-section" aria-label="图表快捷指令">
                 <header class="shortcuts-header">
                     <h3>常用统计图</h3>
                     <span>一键生成常见图表类型</span>
+                    <button type="button" class="section-toggle" data-target="chart-shortcuts">▾</button>
                 </header>
-                <div class="template-picker">
-                    <label for="template-select">模板：</label>
-                    <select id="template-select" aria-label="选择生成模板">
-                        <option value="">选择一个模板</option>
-                        <option value="line-trend">趋势折线图</option>
-                        <option value="bar-compare">对比柱状图</option>
-                        <option value="pie-share">占比饼图</option>
-                        <option value="stacked-area">堆叠面积图</option>
-                        <option value="scatter-relation">散点关系图</option>
-                        <option value="radar-profile">雷达分布图</option>
-                    </select>
+                <div class="section-body">
+                    <div class="template-picker">
+                        <label for="template-select">模板：</label>
+                        <select id="template-select" aria-label="选择生成模板">
+                            <option value="">选择一个模板</option>
+                            <option value="line-trend">趋势折线图</option>
+                            <option value="bar-compare">对比柱状图</option>
+                            <option value="pie-share">占比饼图</option>
+                            <option value="stacked-area">堆叠面积图</option>
+                            <option value="scatter-relation">散点关系图</option>
+                            <option value="radar-profile">雷达分布图</option>
+                        </select>
+                    </div>
+                    <div id="chart-shortcut-list" role="list"></div>
                 </div>
-                <div id="chart-shortcut-list" role="list"></div>
             </section>
         </div>
     </aside>

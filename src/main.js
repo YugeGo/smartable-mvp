@@ -70,7 +70,8 @@ const STORAGE_KEYS = {
 	bannerDismissed: 'smartable:banner-dismissed',
 	session: 'smartable:session',
 	darkMode: 'smartable:dark-mode',
-	toolCollapsed: 'smartable:tool-collapsed'
+	toolCollapsed: 'smartable:tool-collapsed',
+	sectionCollapsed: 'smartable:section-collapsed'
 };
 
 // --- 2. State Management ---
@@ -498,6 +499,7 @@ initializeOnboarding();
 initializeGuide();
 initializeProductIntro();
 initializeToolCollapse();
+initializeSidebarSectionCollapse();
 
 const dataInputColumn = document.getElementById('data-input-column');
 if (dataInputColumn) {
@@ -1317,6 +1319,55 @@ function initializeToolCollapse() {
 			localStorage.setItem(STORAGE_KEYS.toolCollapsed, String(nowCollapsed));
 		});
 	}
+}
+
+// 侧栏区块折叠：产品介绍、使用指南、常用统计图
+function initializeSidebarSectionCollapse() {
+	const toggles = document.querySelectorAll('.section-toggle');
+	if (!toggles || toggles.length === 0) return;
+
+	// 恢复状态
+	toggles.forEach(btn => {
+		const targetId = btn.getAttribute('data-target');
+		if (!targetId) return;
+		const section = document.getElementById(targetId);
+		if (!section) return;
+		try {
+			const raw = localStorage.getItem(STORAGE_KEYS.sectionCollapsed);
+			const map = raw ? JSON.parse(raw) : {};
+			const collapsed = !!map[targetId];
+			section.classList.toggle('collapsed', collapsed);
+			btn.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+			btn.setAttribute('aria-controls', `${targetId}-body`);
+		} catch (e) {
+			// ignore
+		}
+		// 确保 section-body 有唯一 id 便于无障碍
+		const body = section.querySelector('.section-body');
+		if (body && !body.id) {
+			body.id = `${targetId}-body`;
+		}
+	});
+
+	// 绑定点击
+	toggles.forEach(btn => {
+		btn.addEventListener('click', () => {
+			const targetId = btn.getAttribute('data-target');
+			if (!targetId) return;
+			const section = document.getElementById(targetId);
+			if (!section) return;
+			const willCollapse = !section.classList.contains('collapsed');
+			section.classList.toggle('collapsed', willCollapse);
+			btn.setAttribute('aria-expanded', willCollapse ? 'false' : 'true');
+			// 持久化
+			try {
+				const raw = localStorage.getItem(STORAGE_KEYS.sectionCollapsed);
+				const map = raw ? JSON.parse(raw) : {};
+				map[targetId] = willCollapse;
+				localStorage.setItem(STORAGE_KEYS.sectionCollapsed, JSON.stringify(map));
+			} catch (e) { /* noop */ }
+		});
+	});
 }
 
 function setActiveTable(tableName) {

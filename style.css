@@ -1098,6 +1098,28 @@ body.dark-mode .panel-actions .primary {
 	border-radius: 999px;
 }
 
+/* --- Collapsible sections --- */
+.sidebar-section .section-body { display: block; }
+.sidebar-section.collapsed .section-body { display: none; }
+.section-toggle {
+	border: none;
+	background: transparent;
+	color: var(--text-muted);
+	cursor: pointer;
+	padding: 2px 6px;
+	border-radius: 8px;
+	line-height: 1;
+	font-size: 14px;
+	transition: var(--transition);
+}
+.section-toggle:hover { background: rgba(15, 23, 42, 0.06); }
+body.dark-mode .section-toggle:hover { background: rgba(37, 99, 235, 0.2); }
+.sidebar-section .section-toggle { transform: rotate(0deg); transition: transform .18s ease; }
+.sidebar-section.collapsed .section-toggle { transform: rotate(-90deg); }
+
+/* 轻量说明文字 */
+.intro-note, .guide-note { color: var(--text-muted); font-size: 12px; margin-top: 6px; }
+
 .message {
 	max-width: 78%;
 	padding: 1rem 1.25rem;
