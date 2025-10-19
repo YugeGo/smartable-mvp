@@ -17,13 +17,16 @@ const dataPasteArea = document.getElementById('data-paste-area');
 const dataPasteSubmit = document.getElementById('data-paste-submit');
 const dataPasteCancel = document.getElementById('data-paste-cancel');
 const dataPasteClose = document.getElementById('data-paste-close');
+const newSessionBtn = document.getElementById('new-session-btn');
 
 const STORAGE_KEYS = {
     initialMessage: 'smartable:initial-message',
-    bannerDismissed: 'smartable:banner-dismissed'
+    bannerDismissed: 'smartable:banner-dismissed',
+    session: 'smartable:session'
 };
 
 // --- 2. State Management ---
+let messages = [];
 let currentCsvData = '';
 let originalCsvData = '';
 
@@ -162,6 +165,13 @@ function addMessage(sender, content) {
 
     messageList.appendChild(messageBubble);
     messageList.scrollTop = messageList.scrollHeight;
+
+    // Do not save initial system messages to the session history
+    if (sender === 'system' && messages.length === 0) {
+        return;
+    }
+    messages.push({ sender, content });
+    saveSession();
 }
 
 /**
@@ -292,8 +302,10 @@ async function handleFileSelect(event) {
 
         currentCsvData = finalCsvString;
         originalCsvData = finalCsvString;
-        updateUploadStatus(`✅ ${file.name} · ${formatFileSize(file.size)} · ${headers.length} 列 · ${rowCount} 行 已准备就绪`, 'success');
+        messages = []; // Reset history on new upload
         addMessage('system', '文件上传成功，数据已准备就绪。现在您可以下达指令了。');
+        updateUploadStatus(`✅ ${file.name} · ${formatFileSize(file.size)} · ${headers.length} 列 · ${rowCount} 行 已准备就绪`, 'success');
+        saveSession();
     } catch (error) {
         console.error('Failed to process file:', error);
         updateUploadStatus(`⚠️ ${file.name} 读取失败，请确保文件格式正确。`, 'error');
@@ -342,6 +354,15 @@ if (dataPasteClose) {
     dataPasteClose.addEventListener('click', () => closeDataInputPanel());
 }
 
+if (newSessionBtn) {
+    newSessionBtn.addEventListener('click', () => {
+        if (confirm('确定要开始一个新会话吗？当前所有数据和对话历史都将被清除。')) {
+            localStorage.removeItem(STORAGE_KEYS.session);
+            window.location.reload();
+        }
+    });
+}
+
 document.addEventListener('keydown', event => {
     if (event.key === 'Escape' && dataInputPanel && dataInputPanel.classList.contains('open')) {
         closeDataInputPanel();
@@ -362,6 +383,9 @@ function setLoadingState(isLoading) {
     uploadBtn.disabled = isLoading;
     if (pasteBtn) {
         pasteBtn.disabled = isLoading;
+    }
+    if (newSessionBtn) {
+        newSessionBtn.disabled = isLoading;
     }
 
     if (isLoading) {
@@ -432,6 +456,10 @@ function formatFileSize(bytes) {
 }
 
 function initializeOnboarding() {
+    if (loadSession()) {
+        return; // Session loaded, skip onboarding messages
+    }
+
     if (!sessionStorage.getItem(STORAGE_KEYS.initialMessage)) {
         addMessage('system', '欢迎使用智表！上传或粘贴数据后描述你的需求，我们会输出结构化表格并尝试生成图表。');
         sessionStorage.setItem(STORAGE_KEYS.initialMessage, 'true');
@@ -521,11 +549,13 @@ function handlePasteSubmit() {
 
     currentCsvData = sanitized;
     originalCsvData = sanitized;
-    updateUploadStatus(`✅ 粘贴数据 · ${headers.length} 列 · ${rowCount} 行 已准备就绪`, 'success');
+    messages = []; // Reset history on new paste
     addMessage('system', '粘贴数据成功，随时输入指令开始分析。');
+    updateUploadStatus(`✅ 粘贴数据 · ${headers.length} 列 · ${rowCount} 行 已准备就绪`, 'success');
 
     dataPasteArea.value = '';
     closeDataInputPanel();
+    saveSession();
 }
 
 function extractHeaders(csvString) {
@@ -708,5 +738,59 @@ function getCategoryCount(axisCandidate) {
     });
 
     return maxCount;
+}
+
+function saveSession() {
+    if (messages.length === 0 && !currentCsvData) {
+        localStorage.removeItem(STORAGE_KEYS.session);
+        return;
+    }
+
+    const sessionData = {
+        messages,
+        currentCsvData,
+        originalCsvData
+    };
+
+    try {
+        localStorage.setItem(STORAGE_KEYS.session, JSON.stringify(sessionData));
+    } catch (error) {
+        console.error('Failed to save session:', error);
+        // Potentially handle storage quota exceeded error
+    }
+}
+
+function loadSession() {
+    const savedSession = localStorage.getItem(STORAGE_KEYS.session);
+    if (!savedSession) {
+        return false;
+    }
+
+    try {
+        const sessionData = JSON.parse(savedSession);
+        if (!sessionData || !sessionData.messages || !sessionData.currentCsvData) {
+            return false;
+        }
+
+        messages = [];
+        messageList.innerHTML = '';
+
+        sessionData.messages.forEach(msg => {
+            addMessage(msg.sender, msg.content);
+        });
+
+        currentCsvData = sessionData.currentCsvData;
+        originalCsvData = sessionData.originalCsvData || sessionData.currentCsvData;
+
+        const headers = extractHeaders(currentCsvData);
+        const rowCount = Math.max(currentCsvData.split('\n').length - 1, 0);
+        updateUploadStatus(`✅ 会话已恢复 · ${headers.length} 列 · ${rowCount} 行`, 'success');
+
+        return true;
+    } catch (error) {
+        console.error('Failed to load session:', error);
+        localStorage.removeItem(STORAGE_KEYS.session);
+        return false;
+    }
 }
 
