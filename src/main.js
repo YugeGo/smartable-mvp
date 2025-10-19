@@ -35,6 +35,7 @@ const dataPreviewTable = document.getElementById('data-preview-table');
 const dataPreviewFootnote = document.getElementById('data-preview-footnote');
 // Data tools elements
 const dtToolbar = document.getElementById('data-tools');
+const dtToggle = document.getElementById('dt-toggle');
 const dtColumnSelect = document.getElementById('dt-column-select');
 const dtRefreshColsBtn = document.getElementById('dt-refresh-cols');
 const dtFilterValue = document.getElementById('dt-filter-value');
@@ -68,7 +69,8 @@ const STORAGE_KEYS = {
 	initialMessage: 'smartable:initial-message',
 	bannerDismissed: 'smartable:banner-dismissed',
 	session: 'smartable:session',
-	darkMode: 'smartable:dark-mode'
+	darkMode: 'smartable:dark-mode',
+	toolCollapsed: 'smartable:tool-collapsed'
 };
 
 // --- 2. State Management ---
@@ -495,6 +497,7 @@ initializeChartShortcuts();
 initializeOnboarding();
 initializeGuide();
 initializeProductIntro();
+initializeToolCollapse();
 
 const dataInputColumn = document.getElementById('data-input-column');
 if (dataInputColumn) {
@@ -1298,6 +1301,21 @@ function renderActiveTablePreview() {
 		} else {
 			dataPreviewFootnote.textContent = '';
 		}
+	}
+}
+
+function initializeToolCollapse() {
+	if (!dtToolbar) return;
+	const collapsed = localStorage.getItem(STORAGE_KEYS.toolCollapsed) === 'true';
+	dtToolbar.classList.toggle('collapsed', collapsed);
+	if (dtToggle) {
+		dtToggle.setAttribute('aria-expanded', collapsed ? 'false' : 'true');
+		dtToggle.addEventListener('click', () => {
+			const nowCollapsed = !dtToolbar.classList.contains('collapsed') ? true : false;
+			dtToolbar.classList.toggle('collapsed', nowCollapsed);
+			dtToggle.setAttribute('aria-expanded', nowCollapsed ? 'false' : 'true');
+			localStorage.setItem(STORAGE_KEYS.toolCollapsed, String(nowCollapsed));
+		});
 	}
 }
 

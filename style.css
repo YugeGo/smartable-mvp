@@ -681,6 +681,7 @@ body.dark-mode #data-input-panel {
 	flex-direction: column;
 	gap: 0.6rem;
 }
+.data-tools.collapsed { display: none; }
 
 .data-tools .tools-row {
 	display: flex;
@@ -1464,11 +1465,12 @@ body.dark-mode #upload-status.loading {
 }
 
 .action-buttons {
-	display: flex;
+	display: none;
 	justify-content: flex-end;
 	gap: 0.65rem;
 	margin-top: 1rem;
 }
+.ai-message:hover .action-buttons { display: flex; }
 
 .action-btn {
 	padding: 0.45rem 1.05rem;
@@ -2159,6 +2161,14 @@ body.dark-mode .guide-modal {
 /* 侧栏“使用指南”板块细节 */
 #guide-section .guide-controls { display: flex; gap: .5rem; align-items: center; }
 #guide-section .guide-start { border-radius: 12px; border: 1px solid rgba(148, 163, 184, 0.35); padding: .45rem .8rem; background: rgba(248, 250, 252, 0.95); cursor: pointer; }
+
+/* 极简化：幽灵按钮与更紧凑的间距 */
+.ghost-btn { border: 1px solid rgba(148, 163, 184, 0.25); background: transparent; color: var(--text-muted); border-radius: 10px; padding: .25rem .5rem; cursor: pointer; }
+.ghost-btn:hover { background: rgba(219, 234, 254, 0.3); color: var(--accent-strong); }
+
+.sidebar-section { padding: 1.1rem 1.2rem; }
+.preview-header { gap: .5rem; }
+.message { padding: .9rem 1.1rem; }
 
 /* 产品介绍 */
 #product-intro .intro-copy { margin: 0; color: var(--text-muted); }
