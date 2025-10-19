@@ -194,13 +194,19 @@ async function handleSendMessage() {
     messageList.scrollTop = messageList.scrollHeight;
 
     try {
+        const latestSchema = extractHeaders(currentCsvData);
+        const originalSchema = extractHeaders(originalCsvData);
+        const expectedSchema = [...latestSchema];
+
         const response = await fetch('/api/process', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
                 data: currentCsvData,
                 command: userCommand,
-                originalData: originalCsvData
+                originalData: originalCsvData,
+                latestSchema,
+                originalSchema
             })
         });
 
@@ -215,7 +221,17 @@ async function handleSendMessage() {
         addMessage('ai', completion);
 
         if (completion && completion.result) {
-            currentCsvData = completion.result;
+            const nextSchema = extractHeaders(completion.result);
+            const missingColumns = findMissingColumns(expectedSchema, nextSchema);
+
+            if (missingColumns.length > 0 && expectedSchema.length > 0) {
+                addMessage(
+                    'system',
+                    `检测到返回结果缺少列：${missingColumns.join(', ')}。已保持上一轮数据，请尝试更明确的指令或直接说明需要保留这些列。`
+                );
+            } else {
+                currentCsvData = completion.result;
+            }
         }
     } catch (error) {
         console.error('Handler Error:', error);
@@ -390,3 +406,34 @@ function initializeOnboarding() {
         });
     });
 }
+
+function extractHeaders(csvString) {
+    if (!csvString || typeof csvString !== 'string') {
+        return [];
+    }
+
+    const trimmed = csvString.trim();
+    if (!trimmed) {
+        return [];
+    }
+
+    const [headerLine] = trimmed.split('\n');
+    if (!headerLine) {
+        return [];
+    }
+
+    return headerLine
+        .split(',')
+        .map(header => header.trim())
+        .filter(header => header.length > 0);
+}
+
+function findMissingColumns(expectedSchema, actualSchema) {
+    if (!Array.isArray(expectedSchema) || expectedSchema.length === 0) {
+        return [];
+    }
+
+    const actualSet = new Set(Array.isArray(actualSchema) ? actualSchema : []);
+    return expectedSchema.filter(column => !actualSet.has(column));
+}
+
