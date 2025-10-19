@@ -96,11 +96,17 @@ if (fileUploadInput) {
             }
 
             const worksheet = workbook.Sheets[firstSheetName];
-            const csvString = XLSX.utils
-                .sheet_to_csv(worksheet, { skipHidden: true })
-                .replace(/^(,*\s*)+$/gm, '')
-                .trim();
-            dataPasteArea.value = csvString;
+            // Convert the worksheet to a raw CSV string
+const rawCsvString = XLSX.utils.sheet_to_csv(worksheet);
+
+// Process the CSV string line by line to clean it up
+const cleanedLines = rawCsvString.split('\n') // 1. Split into lines
+    .map(line => line.replace(/,+$/, ''))     // 2. For each line, remove trailing commas
+    .filter(line => line.trim() !== '');      // 3. Remove any lines that are now completely empty
+
+const finalCsvString = cleanedLines.join('\n'); // 4. Join the cleaned lines back together
+
+dataPasteArea.value = finalCsvString; // Set the textarea value to the final result
         } catch (error) {
             console.error('Failed to process file:', error);
             dataPasteArea.value = '文件读取失败，请确保文件格式正确！';
