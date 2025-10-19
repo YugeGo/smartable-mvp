@@ -21,6 +21,24 @@
                     <h3 id="data-preview-title">当前数据源</h3>
                     <span class="preview-meta">实时展示当前选中数据的最近状态</span>
                 </header>
+                <div id="data-tools" class="data-tools" aria-label="数据工具">
+                    <div class="tools-row">
+                        <label for="dt-column-select">列</label>
+                        <select id="dt-column-select" aria-label="选择列"></select>
+                        <button type="button" id="dt-refresh-cols">刷新列</button>
+                    </div>
+                    <div class="tools-row">
+                        <input id="dt-filter-value" type="text" placeholder="包含关键字"> 
+                        <button type="button" id="dt-filter-apply">筛选包含</button>
+                        <button type="button" id="dt-sort-asc">升序</button>
+                        <button type="button" id="dt-sort-desc">降序</button>
+                    </div>
+                    <div class="tools-row">
+                        <input id="dt-topk-k" type="number" min="1" value="10" aria-label="TopK 数量" style="width:80px"> 
+                        <button type="button" id="dt-topk-apply">Top-K（按数值）</button>
+                        <button type="button" id="dt-undo">撤销</button>
+                    </div>
+                </div>
                 <div id="data-preview-table" class="preview-table"></div>
                 <p id="data-preview-footnote" class="data-preview-footnote"></p>
             </section>

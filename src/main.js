@@ -33,6 +33,17 @@ const dataPreviewSection = document.getElementById('data-preview');
 const dataPreviewTitle = document.getElementById('data-preview-title');
 const dataPreviewTable = document.getElementById('data-preview-table');
 const dataPreviewFootnote = document.getElementById('data-preview-footnote');
+// Data tools elements
+const dtToolbar = document.getElementById('data-tools');
+const dtColumnSelect = document.getElementById('dt-column-select');
+const dtRefreshColsBtn = document.getElementById('dt-refresh-cols');
+const dtFilterValue = document.getElementById('dt-filter-value');
+const dtFilterApply = document.getElementById('dt-filter-apply');
+const dtSortAsc = document.getElementById('dt-sort-asc');
+const dtSortDesc = document.getElementById('dt-sort-desc');
+const dtTopKInput = document.getElementById('dt-topk-k');
+const dtTopKApply = document.getElementById('dt-topk-apply');
+const dtUndo = document.getElementById('dt-undo');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
@@ -53,6 +64,8 @@ let workspace = {};
 // The name of the table currently being viewed/edited.
 let activeTableName = '';
 let isDarkMode = false;
+// Keep a simple per-table history for one-step undo
+const tableHistory = new Map(); // tableName -> [prevCsv]
 
 var CHART_COLOR_PRESETS = Object.freeze({
 	classic: ['#2563eb', '#a855f7', '#14b8a6', '#f97316', '#facc15', '#ec4899'],
@@ -1134,6 +1147,9 @@ function renderActiveTablePreview() {
 	dataPreviewTitle.textContent = `当前数据源 · ${activeTableName}`;
 	renderCsvAsTable(previewCsv, dataPreviewTable);
 
+	// 更新工具条列选择
+	populateDataToolsColumns(extractHeaders(fullCsv));
+
 	if (dataPreviewFootnote) {
 		if (truncated) {
 			const totalRows = Math.max(rows.length - 1, 0);
@@ -1161,6 +1177,8 @@ function setActiveTable(tableName) {
 	updateUploadStatus(`📊 当前数据源: ${tableName} · ${columnCount} 列 · ${rowCount} 行`);
 	saveSession();
 	syncChartShortcutButtons();
+	// 清空该表的历史（新活跃表）
+	tableHistory.set(tableName, []);
 }
 
 function removeTable(tableName) {
@@ -1248,6 +1266,8 @@ function loadSession() {
 
 		renderDataSourceList();
 		syncChartShortcutButtons();
+		// 初始化历史
+		Object.keys(workspace).forEach(name => tableHistory.set(name, []));
 
 		return true;
 	} catch (error) {
@@ -1522,3 +1542,114 @@ function exportChartImage(messageBubble) {
 function getExportBgColor() {
 	return isDarkMode ? '#0f172a' : '#ffffff';
 }
+
+// --- 6. Data Tools ---
+function populateDataToolsColumns(headers) {
+	if (!dtToolbar || !dtColumnSelect) return;
+	dtColumnSelect.innerHTML = '';
+	headers.forEach((h, idx) => {
+		const opt = document.createElement('option');
+		opt.value = String(idx);
+		opt.textContent = h;
+		dtColumnSelect.appendChild(opt);
+	});
+}
+
+function getActiveCsvRows() {
+	const csv = workspace[activeTableName]?.currentData || '';
+	const lines = csv.trim() ? csv.trim().split('\n') : [];
+	if (lines.length === 0) return { headers: [], rows: [] };
+	const headers = lines[0].split(',').map(s => s.trim());
+	const rows = lines.slice(1).map(line => line.split(',').map(s => s.trim()));
+	return { headers, rows };
+}
+
+function writeActiveCsv(headers, rows) {
+	const csv = [headers.join(','), ...rows.map(r => r.join(','))].join('\n');
+	// push history
+	const hist = tableHistory.get(activeTableName) || [];
+	const prev = workspace[activeTableName].currentData;
+	hist.push(prev);
+	// 只保留一层撤销
+	if (hist.length > 1) hist.shift();
+	tableHistory.set(activeTableName, hist);
+
+	workspace[activeTableName].currentData = csv;
+	renderActiveTablePreview();
+	saveSession();
+}
+
+function isNumericColumn(rows, colIndex) {
+	let numeric = 0, total = 0;
+	rows.forEach(r => {
+		const v = r[colIndex];
+		if (v !== undefined && v !== '') {
+			total++;
+			if (!Number.isNaN(Number(v))) numeric++;
+		}
+	});
+	return total > 0 && numeric / total > 0.6;
+}
+
+function applyFilterContains() {
+	const { headers, rows } = getActiveCsvRows();
+	if (headers.length === 0) return;
+	const idx = Number(dtColumnSelect?.value || 0);
+	const keyword = (dtFilterValue?.value || '').trim();
+	if (!keyword) return;
+	const filtered = rows.filter(r => (r[idx] || '').includes(keyword));
+	writeActiveCsv(headers, filtered);
+}
+
+function applySortAscDesc(direction) {
+	const { headers, rows } = getActiveCsvRows();
+	if (headers.length === 0) return;
+	const idx = Number(dtColumnSelect?.value || 0);
+	const numeric = isNumericColumn(rows, idx);
+	const sorted = [...rows].sort((a, b) => {
+		const av = a[idx] || '';
+		const bv = b[idx] || '';
+		if (numeric) {
+			const na = Number(av), nb = Number(bv);
+			return direction === 'asc' ? na - nb : nb - na;
+		}
+		return direction === 'asc' ? String(av).localeCompare(String(bv)) : String(bv).localeCompare(String(av));
+	});
+	writeActiveCsv(headers, sorted);
+}
+
+function applyTopK() {
+	const { headers, rows } = getActiveCsvRows();
+	if (headers.length === 0) return;
+	const idx = Number(dtColumnSelect?.value || 0);
+	const k = Math.max(Number(dtTopKInput?.value || 10), 1);
+	const numeric = isNumericColumn(rows, idx);
+	const sorted = [...rows].sort((a, b) => {
+		const av = a[idx] || '';
+		const bv = b[idx] || '';
+		if (numeric) return Number(bv) - Number(av);
+		return String(bv).localeCompare(String(av));
+	});
+	writeActiveCsv(headers, sorted.slice(0, k));
+}
+
+function undoLastChange() {
+	const hist = tableHistory.get(activeTableName) || [];
+	if (hist.length === 0) return;
+	const prev = hist.pop();
+	tableHistory.set(activeTableName, hist);
+	workspace[activeTableName].currentData = prev;
+	renderActiveTablePreview();
+	saveSession();
+}
+
+// Hook toolbar buttons
+if (dtFilterApply) dtFilterApply.addEventListener('click', applyFilterContains);
+if (dtSortAsc) dtSortAsc.addEventListener('click', () => applySortAscDesc('asc'));
+if (dtSortDesc) dtSortDesc.addEventListener('click', () => applySortAscDesc('desc'));
+if (dtTopKApply) dtTopKApply.addEventListener('click', applyTopK);
+if (dtUndo) dtUndo.addEventListener('click', undoLastChange);
+if (dtRefreshColsBtn) dtRefreshColsBtn.addEventListener('click', () => {
+	const csv = workspace[activeTableName]?.currentData || '';
+	populateDataToolsColumns(extractHeaders(csv));
+});
