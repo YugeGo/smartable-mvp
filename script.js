@@ -6,6 +6,7 @@ const commandInput = document.getElementById('command-input');
 const executeBtn = document.getElementById('execute-btn');
 const resultDisplay = document.getElementById('result-display');
 const copyBtn = document.getElementById('copy-btn'); // V1.1 Added
+const fileUploadInput = document.getElementById('file-upload-input');
 
 // V1.1 New Function: Render CSV string as an HTML table
 function renderCsvAsTable(csvString, containerElement) {
@@ -77,6 +78,33 @@ copyBtn.addEventListener('click', () => {
     });
 });
 
+// File upload handling
+if (fileUploadInput) {
+    fileUploadInput.addEventListener('change', async (event) => {
+        const file = event.target.files && event.target.files[0];
+        if (!file) {
+            return;
+        }
+
+        try {
+            dataPasteArea.value = '正在读取文件...';
+            const data = await file.arrayBuffer();
+            const workbook = XLSX.read(data, { type: 'array' });
+            const firstSheetName = workbook.SheetNames && workbook.SheetNames[0];
+
+            if (!firstSheetName) {
+                throw new Error('未找到工作表');
+            }
+
+            const worksheet = workbook.Sheets[firstSheetName];
+            const csvString = XLSX.utils.sheet_to_csv(worksheet);
+            dataPasteArea.value = csvString;
+        } catch (error) {
+            console.error('Failed to process file:', error);
+            dataPasteArea.value = '文件读取失败，请确保文件格式正确！';
+        }
+    });
+}
 
 // Main Event Listener for the Execute Button
 executeBtn.addEventListener('click', async () => {
@@ -137,3 +165,29 @@ function showWelcomeMessage() {
 
 // Show the welcome message when the page loads
 showWelcomeMessage();
+/*
+[Instruction Start]
+
+1.  **Get the File Input Element:**
+    *   Create a constant variable to get a reference to the file input element with the id `file-upload-input`.
+
+2.  **Add Event Listener for File Upload:**
+    *   Add a 'change' event listener to this file input element. The handler function should be an `async` function.
+
+3.  **Inside the Async Handler Function:**
+    *   Get the selected file from the event object: `const file = event.target.files[0];`. If no file is selected, return early.
+    *   Use a `try...catch` block to handle potential file reading errors.
+    *   **Inside the `try` block:**
+        *   Display a simple loading message to the user, e.g., by setting the `data-paste-area`'s value to "正在读取文件...".
+        *   Read the file content as an ArrayBuffer using `await file.arrayBuffer();`.
+        *   Use the `XLSX` library (which is now globally available from the CDN) to parse the file data. Call `XLSX.read(data, { type: 'array' });`.
+        *   Get the name of the first sheet in the workbook.
+        *   Get the worksheet object using the sheet name.
+        *   Convert the worksheet object to a CSV string using `XLSX.utils.sheet_to_csv(worksheet);`.
+        *   Finally, set the `data-paste-area`'s value to this generated CSV string.
+    *   **Inside the `catch` block:**
+        *   Log the error to the console.
+        *   Show a user-friendly error message in the `data-paste-area`, e.g., "文件读取失败，请确保文件格式正确！".
+
+[Instruction End]
+*/
