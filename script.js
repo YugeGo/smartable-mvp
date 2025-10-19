@@ -568,28 +568,41 @@ function formatFileSize(bytes) {
 }
 
 function initializeOnboarding() {
-    if (loadSession()) {
-        return; // Session loaded, skip onboarding messages
-    }
+    // 加载会话：若存在历史会话，只跳过欢迎消息，但仍需设置引导可见性与事件绑定
+    const hasSession = loadSession();
 
-    if (!sessionStorage.getItem(STORAGE_KEYS.initialMessage)) {
+    if (!hasSession && !sessionStorage.getItem(STORAGE_KEYS.initialMessage)) {
         addMessage('system', '欢迎使用智表！上传或粘贴数据后描述你的需求，我们会输出结构化表格并尝试生成图表。');
         sessionStorage.setItem(STORAGE_KEYS.initialMessage, 'true');
     }
 
-    if (localStorage.getItem(STORAGE_KEYS.bannerDismissed) === 'true' && onboardingBanner) {
-        onboardingBanner.classList.add('hidden');
+    // 根据持久化状态更新引导可见性与可访问性属性
+    if (onboardingBanner) {
+        const dismissed = localStorage.getItem(STORAGE_KEYS.bannerDismissed) === 'true';
+        if (dismissed) {
+            onboardingBanner.classList.add('hidden');
+            onboardingBanner.setAttribute('aria-hidden', 'true');
+        } else {
+            onboardingBanner.classList.remove('hidden');
+            onboardingBanner.setAttribute('aria-hidden', 'false');
+        }
     }
 
+    // 绑定关闭按钮，点击后隐藏并记住状态
     if (bannerCloseBtn) {
         bannerCloseBtn.addEventListener('click', () => {
             if (onboardingBanner) {
                 onboardingBanner.classList.add('hidden');
+                onboardingBanner.setAttribute('aria-hidden', 'true');
             }
             localStorage.setItem(STORAGE_KEYS.bannerDismissed, 'true');
+            if (commandInput) {
+                commandInput.focus();
+            }
         });
     }
 
+    // 绑定快捷提示 chip 点击填充输入框
     promptChips.forEach(chip => {
         chip.addEventListener('click', () => {
             const preset = chip.getAttribute('data-fill') || '';
