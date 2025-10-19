@@ -23,11 +23,15 @@ const dataPreviewSection = document.getElementById('data-preview');
 const dataPreviewTitle = document.getElementById('data-preview-title');
 const dataPreviewTable = document.getElementById('data-preview-table');
 const dataPreviewFootnote = document.getElementById('data-preview-footnote');
+const chartStyleSelect = document.getElementById('chart-style-select');
+const darkModeToggle = document.getElementById('dark-mode-toggle');
 
 const STORAGE_KEYS = {
     initialMessage: 'smartable:initial-message',
     bannerDismissed: 'smartable:banner-dismissed',
-    session: 'smartable:session'
+    session: 'smartable:session',
+    chartStyle: 'smartable:chart-style',
+    darkMode: 'smartable:dark-mode'
 };
 
 // --- 2. State Management ---
@@ -37,6 +41,8 @@ let messages = [];
 let workspace = {};
 // The name of the table currently being viewed/edited.
 let activeTableName = '';
+let currentChartStyle = 'classic';
+let isDarkMode = false;
 
 // --- 3. Core Functions ---
 
@@ -57,6 +63,10 @@ function renderChart(chartOption, containerElement) {
 
         const enhancedOption = enhanceChartOption(optionClone, containerElement);
 
+        const existingInstance = echarts.getInstanceByDom(containerElement);
+        if (existingInstance) {
+            existingInstance.dispose();
+        }
         const chartInstance = echarts.init(containerElement);
         chartInstance.setOption(enhancedOption, true);
     } catch (error) {
@@ -147,6 +157,11 @@ function addMessage(sender, content, doSave = true) {
                 chartContainer.style.marginTop = '1.25rem';
             }
             messageBubble.appendChild(chartContainer);
+            try {
+                chartContainer.dataset.chartOption = JSON.stringify(chartOption);
+            } catch (error) {
+                console.error('Failed to cache chart option:', error);
+            }
             setTimeout(() => renderChart(chartOption, chartContainer), 0);
             rendered = true;
         }
@@ -402,6 +417,7 @@ document.addEventListener('keydown', event => {
     }
 });
 
+initializeThemeControls();
 initializeOnboarding();
 
 // 兼容旧版布局：如果仍存在传统数据输入列，则隐藏
@@ -419,6 +435,12 @@ function setLoadingState(isLoading) {
     }
     if (newSessionBtn) {
         newSessionBtn.disabled = isLoading;
+    }
+    if (chartStyleSelect) {
+        chartStyleSelect.disabled = isLoading;
+    }
+    if (darkModeToggle) {
+        darkModeToggle.disabled = isLoading;
     }
 
     if (isLoading) {
@@ -644,16 +666,152 @@ function findMissingColumns(expectedSchema, actualSchema) {
     return expectedSchema.filter(column => !actualSet.has(column));
 }
 
+const CHART_COLOR_PRESETS = {
+    classic: ['#2563eb', '#a855f7', '#14b8a6', '#f97316', '#facc15', '#ec4899'],
+    vibrant: ['#ef4444', '#22c55e', '#3b82f6', '#f59e0b', '#8b5cf6', '#ec4899'],
+    pastel: ['#93c5fd', '#d8b4fe', '#fbcfe8', '#fde68a', '#bbf7d0', '#fecaca']
+};
+
+const CHART_COLOR_PRESETS_DARK = {
+    classic: ['#93c5fd', '#c4b5fd', '#5eead4', '#fbbf24', '#fda4af', '#f87171'],
+    vibrant: ['#f87171', '#34d399', '#60a5fa', '#facc15', '#a78bfa', '#fb7185'],
+    pastel: ['#bfdbfe', '#e9d5ff', '#fecdd3', '#fef3c7', '#bbf7d0', '#f5d0fe']
+};
+
 function enhanceChartOption(option, container) {
     if (!option) {
         return option;
     }
 
+    applyChartStylePalette(option);
+    applyChartTheme(option);
     enforceContainLabel(option);
     applyBarSeriesSpacing(option);
     autoResizeChart(option, container);
 
     return option;
+}
+
+function applyChartStylePalette(option) {
+    const palette = getActiveChartPalette();
+    if (Array.isArray(palette) && palette.length > 0) {
+        option.color = palette;
+    }
+}
+
+function getActiveChartPalette() {
+    const lightPalette = CHART_COLOR_PRESETS[currentChartStyle] || CHART_COLOR_PRESETS.classic;
+    const darkPalette = CHART_COLOR_PRESETS_DARK[currentChartStyle] || CHART_COLOR_PRESETS_DARK.classic;
+    return isDarkMode ? darkPalette : lightPalette;
+}
+
+function applyChartTheme(option) {
+    if (isDarkMode) {
+        option.textStyle = {
+            ...(option.textStyle || {}),
+            color: '#e2e8f0'
+        };
+
+        const legendList = normalizeObjectCollection(option.legend);
+        if (legendList.length > 0) {
+            legendList.forEach(legend => {
+                legend.textStyle = {
+                    ...(legend.textStyle || {}),
+                    color: '#e2e8f0'
+                };
+                legend.icon = legend.icon || 'circle';
+            });
+            option.legend = Array.isArray(option.legend) ? legendList : legendList[0];
+        }
+
+        const titleList = normalizeObjectCollection(option.title);
+        if (titleList.length > 0) {
+            titleList.forEach(title => {
+                title.textStyle = {
+                    ...(title.textStyle || {}),
+                    color: '#f8fafc',
+                    fontWeight: '600'
+                };
+                if (title.subtext) {
+                    title.subtextStyle = {
+                        ...(title.subtextStyle || {}),
+                        color: '#cbd5f5'
+                    };
+                }
+            });
+            option.title = Array.isArray(option.title) ? titleList : titleList[0];
+        }
+
+        if (option.tooltip) {
+            option.tooltip = {
+                ...(option.tooltip || {}),
+                backgroundColor: 'rgba(15, 23, 42, 0.92)',
+                borderColor: 'rgba(148, 163, 184, 0.35)',
+                textStyle: {
+                    ...(option.tooltip?.textStyle || {}),
+                    color: '#e2e8f0'
+                }
+            };
+        }
+
+        option.xAxis = applyAxisTheme(option.xAxis);
+        option.yAxis = applyAxisTheme(option.yAxis);
+    }
+}
+
+function normalizeObjectCollection(candidate) {
+    if (Array.isArray(candidate)) {
+        return candidate.filter(item => item && typeof item === 'object');
+    }
+    if (candidate && typeof candidate === 'object') {
+        return [candidate];
+    }
+    return [];
+}
+
+function applyAxisTheme(axisCandidate) {
+    const axes = normalizeObjectCollection(axisCandidate);
+    if (axes.length === 0) {
+        return axisCandidate;
+    }
+
+    axes.forEach(axis => {
+        axis.axisLabel = {
+            ...(axis.axisLabel || {}),
+            color: '#cbd5f5'
+        };
+        axis.nameTextStyle = {
+            ...(axis.nameTextStyle || {}),
+            color: '#94a3b8'
+        };
+        const axisLine = axis.axisLine || {};
+        const axisLineStyle = axisLine.lineStyle || {};
+        axis.axisLine = {
+            ...axisLine,
+            lineStyle: {
+                ...axisLineStyle,
+                color: 'rgba(148, 163, 184, 0.45)'
+            }
+        };
+
+        if (axis.splitLine || axis.type === 'value' || axis.type === undefined) {
+            const splitLine = axis.splitLine || {};
+            const splitLineStyle = splitLine.lineStyle || {};
+            axis.splitLine = {
+                ...splitLine,
+                lineStyle: {
+                    ...splitLineStyle,
+                    color: 'rgba(148, 163, 184, 0.18)'
+                }
+            };
+        }
+    });
+
+    if (Array.isArray(axisCandidate)) {
+        return axes;
+    }
+
+    return axes[0] || axisCandidate;
 }
 
 function enforceContainLabel(option) {
@@ -1020,6 +1178,68 @@ function loadSession() {
         console.error('Failed to load session:', error);
         localStorage.removeItem(STORAGE_KEYS.session);
         return false;
+    }
+}
+
+function rerenderAllCharts() {
+    const chartContainers = document.querySelectorAll('.chart-container');
+    chartContainers.forEach(container => {
+        const rawOption = container.dataset.chartOption;
+        if (!rawOption) {
+            return;
+        }
+
+        try {
+            const option = JSON.parse(rawOption);
+            renderChart(option, container);
+        } catch (error) {
+            console.error('Failed to re-render chart:', error);
+        }
+    });
+}
+
+function applyDarkMode(enable) {
+    document.body.classList.toggle('dark-mode', enable);
+    if (darkModeToggle) {
+        darkModeToggle.textContent = enable ? '☀️' : '🌙';
+        darkModeToggle.setAttribute('aria-label', enable ? '切换到浅色模式' : '切换到深色模式');
+        darkModeToggle.classList.toggle('active', enable);
+    }
+}
+
+function initializeThemeControls() {
+    if (chartStyleSelect) {
+        const savedStyle = localStorage.getItem(STORAGE_KEYS.chartStyle);
+        if (savedStyle && chartStyleSelect.querySelector(`option[value="${savedStyle}"]`)) {
+            currentChartStyle = savedStyle;
+            chartStyleSelect.value = savedStyle;
+        } else {
+            chartStyleSelect.value = currentChartStyle;
+        }
+
+        chartStyleSelect.addEventListener('change', event => {
+            currentChartStyle = event.target.value || 'classic';
+            localStorage.setItem(STORAGE_KEYS.chartStyle, currentChartStyle);
+            rerenderAllCharts();
+        });
+    }
+
+    const savedDarkPreference = localStorage.getItem(STORAGE_KEYS.darkMode);
+    if (savedDarkPreference === 'true' || savedDarkPreference === 'false') {
+        isDarkMode = savedDarkPreference === 'true';
+    } else if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+        isDarkMode = true;
+    }
+
+    applyDarkMode(isDarkMode);
+
+    if (darkModeToggle) {
+        darkModeToggle.addEventListener('click', () => {
+            isDarkMode = !isDarkMode;
+            localStorage.setItem(STORAGE_KEYS.darkMode, String(isDarkMode));
+            applyDarkMode(isDarkMode);
+            rerenderAllCharts();
+        });
     }
 }
 
