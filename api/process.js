@@ -1,25 +1,34 @@
-// api/process.js - V1.1 (DeepSeek Final Version)
+// api/process.js - V1.2 (Netlify Functions Final Version)
 
 import OpenAI from 'openai';
 
-// Initialize the client, but point it to DeepSeek's servers using the OpenAI library
 const deepseek = new OpenAI({
     apiKey: process.env.DEEPSEEK_API_KEY,
-    baseURL: "https://api.deepseek.com" // Use the base URL without /v1
+    baseURL: "https://api.deepseek.com"
 });
 
-export default async function handler(request, response) {
-    if (request.method !== 'POST') {
-        return response.status(405).json({ error: 'Method Not Allowed' });
+export async function handler(event, context) {
+    // Netlify Functions use 'event' as the first argument
+
+    if (event.httpMethod !== 'POST') {
+        return {
+            statusCode: 405,
+            body: JSON.stringify({ error: 'Method Not Allowed' })
+        };
     }
 
     try {
-        const { data, command } = request.body;
+        // The request body is in event.body, and it's a string
+        const body = JSON.parse(event.body || '{}');
+        const { data, command } = body;
+
         if (!data || !command) {
-            return response.status(400).json({ error: 'Data and command are required.' });
+            return {
+                statusCode: 400,
+                body: JSON.stringify({ error: 'Data and command are required.' })
+            };
         }
 
-        // V1.1 Updated Prompt for CSV output
         const prompt = `
 You are a world-class data analyst specializing in spreadsheets. You are precise and efficient.
 You will be given user-provided spreadsheet data as a string, and a command as a string.
@@ -38,15 +47,25 @@ ${command}
 `;
 
         const completion = await deepseek.chat.completions.create({
-            model: "deepseek-chat", // Use DeepSeek's model name
+            model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
         });
 
         const aiResponse = completion.choices[0].message.content;
-        return response.status(200).json({ result: aiResponse });
+
+        // Correct return format for a successful response
+        return {
+            statusCode: 200,
+            body: JSON.stringify({ result: aiResponse })
+        };
 
     } catch (error) {
         console.error("Error calling DeepSeek API:", error);
-        return response.status(500).json({ result: "处理时出现错误，请稍后再试。" });
+
+        // Correct return format for an error response
+        return {
+            statusCode: 500,
+            body: JSON.stringify({ result: "处理时出现错误，请稍后再试。" })
+        };
     }
 }
