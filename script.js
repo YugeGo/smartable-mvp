@@ -104,6 +104,10 @@ function addMessage(sender, content) {
 
         let rendered = false;
 
+        if (chartOption) {
+            messageBubble.classList.add('chart-message');
+        }
+
         if (csvString && csvString.trim() !== '') {
             const tableContainer = document.createElement('div');
             tableContainer.classList.add('table-wrapper');
