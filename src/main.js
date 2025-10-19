@@ -36,6 +36,7 @@ const dataPreviewFootnote = document.getElementById('data-preview-footnote');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
+const templateSelect = document.getElementById('template-select');
 
 const STORAGE_KEYS = {
 	initialMessage: 'smartable:initial-message',
@@ -1326,6 +1327,26 @@ function initializeChartShortcuts() {
 	});
 
 	syncChartShortcutButtons();
+
+	// 模板选择
+	if (templateSelect) {
+		templateSelect.addEventListener('change', () => {
+			const id = templateSelect.value;
+			if (!id) return;
+			const shortcut = CHART_SHORTCUTS.find(s => s.id === id);
+			if (!shortcut) return;
+			if (!activeTableName || !workspace[activeTableName]) {
+				updateUploadStatus('请先上传或粘贴一份数据，再使用模板。', 'error');
+				templateSelect.value = '';
+				return;
+			}
+			const command = typeof shortcut.prompt === 'function' ? shortcut.prompt(activeTableName) : shortcut.prompt;
+			commandInput.value = command;
+			handleSendMessage();
+			// 发送后重置选择，便于连续操作
+			templateSelect.value = '';
+		});
+	}
 }
 
 function handleChartShortcut(shortcut) {
@@ -1360,6 +1381,11 @@ function syncChartShortcutButtons(forceDisable = false) {
 
 	if (chartShortcutsSection) {
 		chartShortcutsSection.classList.toggle('disabled', shouldDisable);
+	}
+
+	if (templateSelect) {
+		templateSelect.disabled = shouldDisable;
+		templateSelect.setAttribute('aria-disabled', shouldDisable ? 'true' : 'false');
 	}
 }
 
