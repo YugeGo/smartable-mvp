@@ -1,4 +1,4 @@
-// api/process.js - V1.2 (Netlify Functions Final Version)
+// api/process.js - V1.5.1 (Chart Generation MVP Backend)
 
 import OpenAI from 'openai';
 
@@ -7,9 +7,7 @@ const deepseek = new OpenAI({
     baseURL: "https://api.deepseek.com"
 });
 
-export async function handler(event, context) {
-    // Netlify Functions use 'event' as the first argument
-
+export async function handler(event) {
     if (event.httpMethod !== 'POST') {
         return {
             statusCode: 405,
@@ -18,7 +16,6 @@ export async function handler(event, context) {
     }
 
     try {
-        // The request body is in event.body, and it's a string
         const body = JSON.parse(event.body || '{}');
         const { data, command } = body;
 
@@ -30,11 +27,15 @@ export async function handler(event, context) {
         }
 
         const prompt = `
-You are a world-class data analyst specializing in spreadsheets. You are precise and efficient.
-You will be given user-provided spreadsheet data as a string, and a command as a string.
-Your task is to strictly follow the user's command to process the data.
-Your output MUST be a standard CSV (Comma-Separated Values) format string. The first line of the CSV must be the header row.
-You MUST ONLY return the raw CSV string, without any introductory text, explanations, apologies, or markdown formatting like \`\`\`.
+You are a world-class data analyst specializing in spreadsheets and data visualization. You are precise, efficient, and return structured data only.
+
+You will be given spreadsheet data (CSV string) and a command. Follow the command exactly.
+
+Your response MUST be a single valid JSON object with two keys:
+1. "result": string of processed data in standard CSV format (header row required).
+2. "chart": if the command implies a visualization, return an ECharts option object; otherwise null.
+
+The chart object, when not null, must be a valid ECharts option (e.g. include series, xAxis, yAxis, etc.). Do not add explanations or markdown, only the raw JSON.
 
 Data:
 ---
@@ -49,23 +50,23 @@ ${command}
         const completion = await deepseek.chat.completions.create({
             model: "deepseek-chat",
             messages: [{ role: "user", content: prompt }],
+            response_format: { type: "json_object" }
         });
 
-        const aiResponse = completion.choices[0].message.content;
+        const aiResponseJsonString = completion.choices[0].message.content;
 
-        // Correct return format for a successful response
         return {
             statusCode: 200,
-            body: JSON.stringify({ result: aiResponse })
+            headers: { "Content-Type": "application/json" },
+            body: aiResponseJsonString
         };
 
     } catch (error) {
         console.error("Error calling DeepSeek API:", error);
-
-        // Correct return format for an error response
         return {
             statusCode: 500,
-            body: JSON.stringify({ result: "处理时出现错误，请稍后再试。" })
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ result: "处理时出现错误，请稍后再试。", chart: null })
         };
     }
 }
