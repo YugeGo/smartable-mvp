@@ -115,6 +115,9 @@ function addMessage(sender, content) {
         if (chartOption) {
             const chartContainer = document.createElement('div');
             chartContainer.classList.add('chart-container');
+            if (messageBubble.children.length > 0) {
+                chartContainer.style.marginTop = '1.25rem';
+            }
             messageBubble.appendChild(chartContainer);
             setTimeout(() => renderChart(chartOption, chartContainer), 0);
             rendered = true;
@@ -309,6 +312,10 @@ function createSkeletonMessage() {
     });
 
     bubble.appendChild(linesWrapper);
+    const status = document.createElement('div');
+    status.classList.add('skeleton-status');
+    status.textContent = 'AI 正在生成内容...';
+    bubble.appendChild(status);
     return bubble;
 }
 
