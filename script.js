@@ -301,6 +301,15 @@ async function handleSendMessage() {
             })
         });
 
+        if (response.status === 504) {
+            if (skeletonMessage.parentNode) {
+                messageList.removeChild(skeletonMessage);
+            }
+            addMessage('system', '后端处理超时，请稍后重试或简化指令后再试。');
+            updateUploadStatus('⏳ 服务响应超时，请稍后重试。', 'error');
+            return;
+        }
+
         if (!response.ok) {
             throw new Error(`API Error: ${response.status}`);
         }
@@ -616,6 +625,17 @@ function openDataInputPanel() {
 function closeDataInputPanel() {
     if (!dataInputPanel) {
         return;
+    }
+
+    const activeEl = document.activeElement;
+    if (activeEl && dataInputPanel.contains(activeEl)) {
+        if (commandInput) {
+            commandInput.focus();
+        } else if (pasteBtn) {
+            pasteBtn.focus();
+        } else if (typeof activeEl.blur === 'function') {
+            activeEl.blur();
+        }
     }
 
     dataInputPanel.classList.remove('open');
