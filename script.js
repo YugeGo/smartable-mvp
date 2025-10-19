@@ -106,6 +106,7 @@ function addMessage(sender, content) {
 
         if (csvString && csvString.trim() !== '') {
             const tableContainer = document.createElement('div');
+            tableContainer.classList.add('table-wrapper');
             renderCsvAsTable(csvString, tableContainer);
             messageBubble.appendChild(tableContainer);
             rendered = true;
