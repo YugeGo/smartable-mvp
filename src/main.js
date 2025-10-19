@@ -20,6 +20,7 @@ const onboardingBanner = document.getElementById('onboarding-banner');
 const bannerCloseBtn = document.getElementById('banner-close');
 const uploadStatus = document.getElementById('upload-status');
 const promptChips = document.querySelectorAll('.prompt-chip');
+const demoButtons = document.querySelectorAll('.demo-btn');
 const pasteBtn = document.getElementById('paste-btn');
 const dataInputPanel = document.getElementById('data-input-panel');
 const dataPasteArea = document.getElementById('data-paste-area');
@@ -216,6 +217,14 @@ function addMessage(sender, content, doSave = true) {
 			downloadBtn.addEventListener('click', () => downloadAsExcel(csvString));
 
 			actionsContainer.appendChild(downloadBtn);
+
+			if (chartOption) {
+				const exportImgBtn = document.createElement('button');
+				exportImgBtn.classList.add('action-btn');
+				exportImgBtn.textContent = '🖼 下载图片';
+				exportImgBtn.addEventListener('click', () => exportChartImage(messageBubble));
+				actionsContainer.appendChild(exportImgBtn);
+			}
 			messageBubble.appendChild(actionsContainer);
 		}
 
@@ -582,6 +591,16 @@ function initializeOnboarding() {
 			if (preset) {
 				commandInput.value = preset;
 				commandInput.focus();
+			}
+		});
+	});
+
+	// 一键样例体验
+	demoButtons.forEach(btn => {
+		btn.addEventListener('click', async () => {
+			const sample = btn.getAttribute('data-sample');
+			if (sample) {
+				await loadSampleDataset(sample);
 			}
 		});
 	});
@@ -1433,4 +1452,47 @@ async function callProcessApi(payload, { timeoutMs = 30000 } = {}) {
 	} finally {
 		clearTimeout(timer);
 	}
+}
+
+// --- 5. Samples & Export Helpers ---
+async function loadSampleDataset(fileName) {
+	try {
+		const resp = await fetch(`/samples/${fileName}`);
+		if (!resp.ok) throw new Error(`Failed to fetch ${fileName}`);
+		const text = await resp.text();
+		const sanitized = sanitizeCsvString(text);
+		const headers = extractHeaders(sanitized);
+		const rowCount = Math.max(sanitized.split('\n').length - 1, 0);
+		const tableName = `样例-${fileName}`;
+		workspace[tableName] = { originalData: sanitized, currentData: sanitized };
+		messages = [];
+		setActiveTable(tableName);
+		addMessage('system', `${tableName} 已载入 · ${headers.length} 列 · ${rowCount} 行`);
+		updateUploadStatus(`✅ ${tableName} · ${headers.length} 列 · ${rowCount} 行`, 'success');
+		showChartPrompt('upload', tableName);
+	} catch (e) {
+		console.error('Load sample failed:', e);
+		updateUploadStatus('样例数据载入失败，请稍后重试。', 'error');
+	}
+}
+
+function exportChartImage(messageBubble) {
+	try {
+		const chartContainer = messageBubble.querySelector('.chart-container');
+		if (!chartContainer) return;
+		const inst = echarts.getInstanceByDom(chartContainer);
+		if (!inst) return;
+		const dataUrl = inst.getDataURL({ type: 'png', pixelRatio: 2, backgroundColor: getExportBgColor() });
+		const a = document.createElement('a');
+		a.href = dataUrl;
+		a.download = `chart-${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.png`;
+		a.click();
+	} catch (e) {
+		console.error('Export image failed:', e);
+		updateUploadStatus('图片导出失败，请稍后重试。', 'error');
+	}
+}
+
+function getExportBgColor() {
+	return isDarkMode ? '#0f172a' : '#ffffff';
 }
