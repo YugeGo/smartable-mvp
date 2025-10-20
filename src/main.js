@@ -702,8 +702,7 @@ async function handleFileSelect(event) {
 			}
 
 			const rowCount = Math.max(aoa.length - 1, 0);
-			const candidateName = buildSheetTableName(file.name, sheetName);
-			const tableName = resolveUniqueTableName(candidateName, takenNames);
+			const tableName = buildSheetTableName(file.name, sheetName, takenNames);
 
 			importedSheets.push({
 				tableName,
@@ -730,7 +729,7 @@ async function handleFileSelect(event) {
 		setActiveTable(primaryTable.tableName);
 
 		const sheetSummary = formatSheetPreview(importedSheets);
-		addMessage('system', `文件 ${file.name} 上传成功，共导入 ${importedSheets.length} 个工作表：${sheetSummary}。`);
+		addMessage('system', `文件 ${file.name} 上传成功，共导入 ${importedSheets.length} 个工作表：${sheetSummary}。可在左侧“当前数据源”区域切换不同工作表。`);
 
 		const statusText = buildUploadStatusText(file, importedSheets);
 		updateUploadStatus(statusText, 'success');
@@ -1221,13 +1220,20 @@ function formatFileSize(bytes) {
 	return `${(bytes / 1048576).toFixed(1)} MB`;
 }
 
-function buildSheetTableName(fileName, sheetName) {
-	const base = (fileName || '工作簿').trim().replace(/\s+/g, ' ');
-	const sheet = (sheetName || 'Sheet1').trim().replace(/\s+/g, ' ');
-	if (!sheet) {
-		return base;
+function buildSheetTableName(fileName, sheetName, takenNames) {
+	const cleanedSheet = (sheetName || 'Sheet1').trim().replace(/\s+/g, ' ') || 'Sheet1';
+	if (!takenNames.has(cleanedSheet)) {
+		takenNames.add(cleanedSheet);
+		return cleanedSheet;
 	}
-	return `${base} · ${sheet}`;
+
+	const fileStem = (fileName || '工作簿')
+		.replace(/\.[^.]+$/, '')
+		.trim()
+		.replace(/\s+/g, ' ')
+		|| '工作簿';
+	const candidate = `${cleanedSheet} · ${fileStem}`;
+	return resolveUniqueTableName(candidate, takenNames);
 }
 
 function resolveUniqueTableName(candidateName, takenNames) {
