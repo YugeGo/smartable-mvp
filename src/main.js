@@ -46,6 +46,7 @@ const dtSortDesc = document.getElementById('dt-sort-desc');
 const dtTopKInput = document.getElementById('dt-topk-k');
 const dtTopKApply = document.getElementById('dt-topk-apply');
 const dtUndo = document.getElementById('dt-undo');
+const dtRedo = document.getElementById('dt-redo');
 const dtExportCsv = document.getElementById('dt-export-csv');
 const dtReset = document.getElementById('dt-reset');
 const dtHint = document.getElementById('dt-hint');
@@ -570,6 +571,23 @@ document.addEventListener('keydown', event => {
 	}
 	if (event.key === 'Escape' && guideOverlay && !guideOverlay.hidden) {
 		closeGuide();
+	}
+	// 快捷键：撤销/重做（避免影响输入框的原生撤销）
+	const target = event.target;
+	const tag = target && target.tagName ? target.tagName.toLowerCase() : '';
+	const isTyping = tag === 'input' || tag === 'textarea' || (target && target.isContentEditable);
+	if (!isTyping && (event.ctrlKey || event.metaKey)) {
+		const key = String(event.key || '').toLowerCase();
+		if (key === 'z' && !event.shiftKey) {
+			event.preventDefault();
+			undoLastChange();
+			return;
+		}
+		if (key === 'y' || (key === 'z' && event.shiftKey)) {
+			event.preventDefault();
+			redoLastChange();
+			return;
+		}
 	}
 });
 
@@ -1488,6 +1506,7 @@ function setActiveTable(tableName) {
 	// 清空该表的历史（新活跃表）
 	tableUndoStack.set(tableName, []);
 	tableRedoStack.set(tableName, []);
+	updateUndoRedoButtons();
 }
 
 function removeTable(tableName) {
@@ -1578,6 +1597,7 @@ function loadSession() {
 		syncChartShortcutButtons();
 	// 初始化历史
 	Object.keys(workspace).forEach(name => { tableUndoStack.set(name, []); tableRedoStack.set(name, []); });
+	updateUndoRedoButtons();
 
 		return true;
 	} catch (error) {
@@ -1914,6 +1934,7 @@ function writeActiveCsv(headers, rows) {
 	workspace[activeTableName].currentData = csv;
 	renderActiveTablePreview();
 	saveSession();
+	updateUndoRedoButtons();
 }
 
 function isNumericColumn(rows, colIndex) {
@@ -1985,6 +2006,7 @@ function undoLastChange() {
 	workspace[activeTableName].currentData = prev;
 	renderActiveTablePreview();
 	saveSession();
+	updateUndoRedoButtons();
 }
 
 function redoLastChange() {
@@ -2002,6 +2024,7 @@ function redoLastChange() {
 	workspace[activeTableName].currentData = next;
 	renderActiveTablePreview();
 	saveSession();
+	updateUndoRedoButtons();
 }
 
 // 删除当前列为空的行（空字符串或仅空白）
@@ -2103,6 +2126,7 @@ function resetToOriginal() {
 	tableUndoStack.set(activeTableName, []);
 	tableRedoStack.set(activeTableName, []);
 	updateUploadStatus('已重置为原始数据。', 'success');
+	updateUndoRedoButtons();
 }
 
 
@@ -2112,7 +2136,6 @@ if (dtSortAsc) dtSortAsc.addEventListener('click', () => applySortAscDesc('asc')
 if (dtSortDesc) dtSortDesc.addEventListener('click', () => applySortAscDesc('desc'));
 if (dtTopKApply) dtTopKApply.addEventListener('click', applyTopK);
 if (dtUndo) dtUndo.addEventListener('click', undoLastChange);
-const dtRedo = document.getElementById('dt-redo');
 if (dtRedo) dtRedo.addEventListener('click', redoLastChange);
 if (dtRefreshColsBtn) dtRefreshColsBtn.addEventListener('click', () => {
 	const csv = workspace[activeTableName]?.currentData || '';
@@ -2124,3 +2147,19 @@ if (dtReset) dtReset.addEventListener('click', resetToOriginal);
 
 // 列选择变化时刷新提示
 if (dtColumnSelect) dtColumnSelect.addEventListener('change', refreshDataHint);
+
+// 根据撤销/重做栈状态更新工具栏按钮可用性
+function updateUndoRedoButtons() {
+	if (!activeTableName) {
+		if (dtUndo) dtUndo.disabled = true;
+		if (dtRedo) dtRedo.disabled = true;
+		return;
+	}
+	const undo = tableUndoStack.get(activeTableName) || [];
+	const redo = tableRedoStack.get(activeTableName) || [];
+	if (dtUndo) dtUndo.disabled = undo.length === 0;
+	if (dtRedo) dtRedo.disabled = redo.length === 0;
+}
+
+// 初始化一次按钮状态
+updateUndoRedoButtons();
