@@ -701,7 +701,13 @@ async function handleFileSelect(event) {
 				return;
 			}
 
-			const rowCount = Math.max(aoa.length - 1, 0);
+			const sanitizedAoa = parseCsvToAoA(finalCsvString);
+			if (!Array.isArray(sanitizedAoa) || sanitizedAoa.length === 0) {
+				return;
+			}
+
+			const dataRows = sanitizedAoa.slice(1);
+			const rowCount = Math.max(dataRows.length, 0);
 			const tableName = buildSheetTableName(file.name, sheetName, takenNames);
 
 			importedSheets.push({
@@ -709,7 +715,8 @@ async function handleFileSelect(event) {
 				sheetName: (sheetName || '').trim() || 'Sheet1',
 				headers,
 				rowCount,
-				csv: finalCsvString
+				csv: finalCsvString,
+				rows: dataRows
 			});
 		});
 
@@ -724,12 +731,27 @@ async function handleFileSelect(event) {
 			};
 		});
 
+		const combinedEntry = buildCombinedSheetEntry(file.name, importedSheets, takenNames);
+
+		if (combinedEntry) {
+			workspace[combinedEntry.tableName] = {
+				originalData: combinedEntry.csv,
+				currentData: combinedEntry.csv
+			};
+		}
+
 		messages = []; // Reset history on new upload
-		const primaryTable = importedSheets[0];
+		const primaryTable = combinedEntry || importedSheets[0];
 		setActiveTable(primaryTable.tableName);
 
 		const sheetSummary = formatSheetPreview(importedSheets);
-		addMessage('system', `文件 ${file.name} 上传成功，共导入 ${importedSheets.length} 个工作表：${sheetSummary}。可在左侧“当前数据源”区域切换不同工作表。`);
+		let systemMessage = `文件 ${file.name} 上传成功，共导入 ${importedSheets.length} 个工作表：${sheetSummary}。`;
+		if (combinedEntry) {
+			systemMessage += `已自动汇总为 ${combinedEntry.tableName}，并设为当前数据源。`;
+		} else {
+			systemMessage += '可在左侧“当前数据源”区域切换不同工作表。';
+		}
+		addMessage('system', systemMessage);
 
 		const statusText = buildUploadStatusText(file, importedSheets);
 		updateUploadStatus(statusText, 'success');
@@ -1275,6 +1297,68 @@ function buildUploadStatusText(file, entries) {
 	const base = parts.join(' · ');
 	const preview = formatSheetPreview(entries);
 	return preview ? `${base}：${preview}` : base;
+}
+
+function buildCombinedSheetEntry(fileName, sheetEntries, takenNames) {
+	if (!Array.isArray(sheetEntries) || sheetEntries.length < 2) {
+		return null;
+	}
+
+	const orderedHeaders = [];
+	const headerSeen = new Set();
+	sheetEntries.forEach(entry => {
+		(entry.headers || []).forEach(header => {
+			if (!headerSeen.has(header)) {
+				headerSeen.add(header);
+				orderedHeaders.push(header);
+			}
+		});
+	});
+
+	const sheetColumnBase = 'sheet_name';
+	let sheetColumn = sheetColumnBase;
+	const lowerHeaderSet = new Set(orderedHeaders.map(header => String(header || '').toLowerCase()));
+	let suffix = 1;
+	while (lowerHeaderSet.has(sheetColumn.toLowerCase())) {
+		sheetColumn = `${sheetColumnBase}_${suffix}`;
+		suffix += 1;
+	}
+
+	const combinedAoA = [[sheetColumn, ...orderedHeaders]];
+	sheetEntries.forEach(entry => {
+		const rows = Array.isArray(entry.rows) ? entry.rows : [];
+		rows.forEach(row => {
+			const rowMap = {};
+			(entry.headers || []).forEach((header, index) => {
+				rowMap[header] = index < row.length ? (row[index] ?? '') : '';
+			});
+			const orderedValues = orderedHeaders.map(header => rowMap[header] ?? '');
+			combinedAoA.push([entry.sheetName, ...orderedValues]);
+		});
+	});
+
+	if (combinedAoA.length === 1) {
+		return null;
+	}
+
+	const csv = unparseAoAToCsv(combinedAoA);
+	const rowCount = combinedAoA.length - 1;
+	const fileStem = (fileName || '工作簿')
+		.replace(/\.[^.]+$/, '')
+		.trim()
+		.replace(/\s+/g, ' ')
+		|| '工作簿';
+	const candidateName = `${fileStem} · 全部工作表`;
+	const tableName = resolveUniqueTableName(candidateName, takenNames);
+
+	return {
+		tableName,
+		sheetName: '全部工作表',
+		headers: [sheetColumn, ...orderedHeaders],
+		rowCount,
+		csv,
+		isCombined: true
+	};
 }
 
 function initializeOnboarding() {
