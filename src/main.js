@@ -60,6 +60,10 @@ const mobileTopbar = document.getElementById('mobile-topbar');
 const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
 const mobileBackdrop = document.getElementById('mobile-backdrop');
 const mobileDarkToggle = document.getElementById('mobile-dark-toggle');
+const mobileMoreBtn = document.getElementById('mobile-more-btn');
+const sidebarEl = document.getElementById('sidebar');
+const sidebarClose = document.getElementById('sidebar-close');
+const quickChips = document.getElementById('mobile-quick-chips');
 const mobileNewBtn = document.getElementById('mobile-new-btn');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
@@ -753,6 +757,8 @@ initializeToolCollapse();
 initializeSidebarSectionCollapse();
 initializeMobileLayout();
 setupEdgeMobileUploadWorkaround();
+initializeMobileHeaderActions();
+initializeMobileQuickChips();
 
 // Edge 移动端上传兜底：部分 Edge(Android/iOS) 会将隐藏 input 的程序化点击映射到“相机/媒体”，并触发媒体权限。
 // 这里在“上传文件”菜单项内嵌一个透明的 file input，让用户直接点到 input，从而调用系统文件选择器。
@@ -1958,6 +1964,99 @@ function updateMobileTopbarVisibility() {
 		mobileTopbar.hidden = true;
 		closeMobileDrawer();
 	}
+}
+
+function initializeMobileHeaderActions() {
+	// 侧边栏 1/3 宽度开合
+	if (mobileMenuToggle && sidebarEl) {
+		mobileMenuToggle.addEventListener('click', () => {
+			sidebarEl.removeAttribute('hidden');
+			sidebarEl.classList.add('open');
+			if (mobileBackdrop) { mobileBackdrop.hidden = false; mobileBackdrop.setAttribute('aria-hidden','false'); }
+		});
+	}
+	if (sidebarClose) {
+		sidebarClose.addEventListener('click', () => {
+			sidebarEl.classList.remove('open');
+			if (mobileBackdrop) { mobileBackdrop.hidden = true; mobileBackdrop.setAttribute('aria-hidden','true'); }
+			// 收起后隐藏节点，避免挡住点击
+			setTimeout(() => sidebarEl.setAttribute('hidden',''), 250);
+		});
+	}
+	if (mobileBackdrop) {
+		mobileBackdrop.addEventListener('click', () => {
+			if (!sidebarEl) return;
+			sidebarEl.classList.remove('open');
+			mobileBackdrop.hidden = true; mobileBackdrop.setAttribute('aria-hidden','true');
+			setTimeout(() => sidebarEl.setAttribute('hidden',''), 250);
+		});
+	}
+
+	// 右上“⋯”更多菜单（包含深色模式及风格切换）
+	if (mobileMoreBtn) {
+		const menu = document.createElement('div');
+		menu.className = 'msg-menu';
+		menu.setAttribute('hidden','');
+		const toggleDark = document.createElement('button');
+		toggleDark.className = 'msg-menu-item';
+		toggleDark.textContent = '🌙 深色模式';
+		toggleDark.addEventListener('click', () => { if (darkModeToggle) darkModeToggle.click(); hide(); });
+		const toggleStyle = document.createElement('button');
+		toggleStyle.className = 'msg-menu-item';
+		toggleStyle.textContent = '🎨 风格切换';
+		toggleStyle.addEventListener('click', () => { const btn = mobileStyleToggle || styleToggle; if (btn) btn.click(); hide(); });
+		menu.appendChild(toggleDark);
+		menu.appendChild(toggleStyle);
+		mobileTopbar.appendChild(menu);
+
+		const show = () => { menu.removeAttribute('hidden'); };
+		const hide = () => { menu.setAttribute('hidden',''); };
+		mobileMoreBtn.addEventListener('click', (e) => { e.stopPropagation(); const hidden = menu.hasAttribute('hidden'); hidden ? show() : hide(); });
+		document.addEventListener('click', (e) => { if (!menu.contains(e.target) && e.target !== mobileMoreBtn) hide(); });
+	}
+}
+
+function initializeMobileQuickChips() {
+	if (!quickChips) return;
+	const chips = [
+		{ id: 'line-trend', label: '📈 趋势图' },
+		{ id: 'top10', label: '🔝 Top-10' },
+		{ id: 'clean-nulls', label: '🧹 清洗空值' },
+		{ id: 'sample', label: '🧪 样例数据' }
+	];
+	quickChips.innerHTML = '';
+	chips.forEach(c => {
+		const btn = document.createElement('button');
+		btn.type = 'button';
+		btn.className = 'chip';
+		btn.textContent = c.label;
+		btn.addEventListener('click', async () => {
+			if (c.id === 'sample') {
+				await loadSampleDataset('sales_weekly.csv');
+				return;
+			}
+			if (!activeTableName || !workspace[activeTableName]) {
+				updateUploadStatus('请先上传或粘贴一份数据，再使用快捷操作。', 'error');
+				return;
+			}
+			if (c.id === 'clean-nulls') {
+				// 直接触发清洗空值：按当前列删除空值
+				dropEmptyInCurrentColumn();
+				return;
+			}
+			if (c.id === 'top10') {
+				// 触发 Top-10 汇总
+				const cmd = '请对当前数据做Top-10汇总，仅返回包含前10条的表格，并保持原有列名不变';
+				commandInput.value = cmd;
+				handleSendMessage();
+				return;
+			}
+			// 其他映射到图表快捷命令
+			const shortcut = CHART_SHORTCUTS.find(s => s.id === c.id);
+			if (shortcut) handleChartShortcut(shortcut);
+		});
+		quickChips.appendChild(btn);
+	});
 }
 
 function initializeProductIntro() {
