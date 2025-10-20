@@ -1,7 +1,10 @@
 const mobileShellHTML = `
   <!-- 纯聊天外壳：沿用现有 DOM，去除桌面侧栏结构 -->
   <header id="mobile-topbar" class="mobile-topbar" aria-label="移动端导航">
-    <button type="button" id="mobile-menu-toggle" class="mobile-icon-btn" aria-label="打开侧边栏" title="侧边栏">➜</button>
+    <div class="mobile-leading-actions">
+      <button type="button" id="mobile-menu-toggle" class="mobile-icon-btn" aria-label="打开侧边栏" title="侧边栏">➜</button>
+      <button type="button" id="new-session-btn" class="mobile-icon-btn" aria-label="新会话" title="开始新的对话">🔄</button>
+    </div>
     <div class="mobile-brand"><span class="brand-name">新对话</span><div class="brand-sub">内容由 AI 生成</div></div>
     <div class="mobile-actions">
       <button id="mobile-more-btn" class="mobile-icon-btn" type="button" aria-label="更多">⋯</button>
