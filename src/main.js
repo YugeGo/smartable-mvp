@@ -111,7 +111,8 @@ const STORAGE_KEYS = {
 	darkMode: 'smartable:dark-mode',
 	appStyle: 'smartable:style',
 	toolCollapsed: 'smartable:tool-collapsed',
-	sectionCollapsed: 'smartable:section-collapsed'
+	sectionCollapsed: 'smartable:section-collapsed',
+	autoExpandResults: 'smartable:auto-expand-results'
 };
 
 // --- 2. State Management ---
@@ -128,6 +129,27 @@ const tableUndoStack = new Map(); // tableName -> string[]
 const tableRedoStack = new Map(); // tableName -> string[]
 
 // CSV 解析/序列化已移动到 packages/core/csv.js
+
+function getAutoExpandPreference() {
+	try {
+		const raw = localStorage.getItem(STORAGE_KEYS.autoExpandResults);
+		if (raw === null) {
+			return true;
+		}
+		return raw === 'true';
+	} catch (error) {
+		console.warn('Failed to read auto-expand preference:', error);
+		return true;
+	}
+}
+
+function setAutoExpandPreference(value) {
+	try {
+		localStorage.setItem(STORAGE_KEYS.autoExpandResults, value ? 'true' : 'false');
+	} catch (error) {
+		console.warn('Failed to persist auto-expand preference:', error);
+	}
+}
 
 var CHART_COLOR_PRESETS = Object.freeze({
 	classic: ['#2563eb', '#a855f7', '#14b8a6', '#f97316', '#facc15', '#ec4899'],
@@ -254,40 +276,59 @@ function addMessage(sender, content, doSave = true) {
 		let rendered = false;
 		const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
 		let deferredContent = null;
+		const autoExpandPref = isMobile ? getAutoExpandPreference() : true;
+		let currentExpanded = autoExpandPref;
+		let tableMenuToggleItem = null;
+		let tableToggleBtn = null;
+		let tableContainer = null;
+		const setTableVisibility = (visible) => {
+			if (!tableContainer) {
+				return currentExpanded;
+			}
+			const nextVisible = typeof visible === 'boolean' ? visible : !currentExpanded;
+			tableContainer.hidden = !nextVisible;
+			tableContainer.setAttribute('aria-hidden', String(!nextVisible));
+			tableContainer.classList.toggle('collapsed', !nextVisible);
+			currentExpanded = nextVisible;
+			if (tableToggleBtn) {
+				tableToggleBtn.textContent = nextVisible ? '⤴ 收起' : '⤵ 展开';
+			}
+			if (tableMenuToggleItem) {
+				tableMenuToggleItem.textContent = nextVisible ? '⤴ 收起结果' : '⤵ 展开结果';
+			}
+			return currentExpanded;
+		};
 
 		if (chartOption) {
 			messageBubble.classList.add('chart-message');
 		}
 
-		// 表格：移动端延迟渲染，桌面端立即渲染
+		// 表格：桌面端直接呈现；移动端默认展开并记住偏好
 		if (csvString && csvString.trim() !== '') {
-			const tableContainer = document.createElement('div');
+			tableContainer = document.createElement('div');
 			tableContainer.classList.add('table-wrapper');
+
 			if (isMobile) {
-				// 移动端先展示摘要与内联操作，避免大表格撑爆屏幕；用户点“展开”再渲染表格
 				const summary = document.createElement('div');
 				summary.className = 'msg-summary';
+				let summaryText = '表格结果可展开查看';
 				try {
 					const aoa = parseCsvToAoA(csvString);
 					const rows = Math.max((aoa?.length || 1) - 1, 0);
 					const cols = Array.isArray(aoa?.[0]) ? aoa[0].length : 0;
-					summary.textContent = `表格结果 · ${cols} 列 · ${rows} 行`;
+					summaryText = `表格结果 · ${cols} 列 · ${rows} 行`;
 				} catch (_) {
-					summary.textContent = '表格结果可展开查看';
+					// ignored
 				}
+				summary.textContent = summaryText;
 
 				const inlineActions = document.createElement('div');
 				inlineActions.className = 'msg-inline-actions';
 
-				const expandBtn = document.createElement('button');
-				expandBtn.type = 'button';
-				expandBtn.className = 'msg-inline-btn';
-				expandBtn.textContent = '⤵ 展开';
-				expandBtn.addEventListener('click', () => {
-					try { renderCsvAsTable(csvString, tableContainer); } catch (_) {}
-					inlineActions.remove();
-					summary.remove();
-				});
+				const toggleBtn = document.createElement('button');
+				toggleBtn.type = 'button';
+				toggleBtn.className = 'msg-inline-btn';
+				tableToggleBtn = toggleBtn;
 
 				const dlBtn = document.createElement('button');
 				dlBtn.type = 'button';
@@ -295,11 +336,19 @@ function addMessage(sender, content, doSave = true) {
 				dlBtn.textContent = '⬇ Excel';
 				dlBtn.addEventListener('click', () => downloadAsExcel(csvString));
 
-				inlineActions.appendChild(expandBtn);
+				inlineActions.appendChild(toggleBtn);
 				inlineActions.appendChild(dlBtn);
 				messageBubble.appendChild(summary);
 				messageBubble.appendChild(inlineActions);
-				// 先不插入表容器，用户展开时再 append，避免空白占位
+				messageBubble.appendChild(tableContainer);
+
+				toggleBtn.addEventListener('click', () => {
+					const next = setTableVisibility(!currentExpanded);
+					setAutoExpandPreference(next);
+				});
+
+				renderCsvAsTable(csvString, tableContainer);
+				setTableVisibility(autoExpandPref);
 			} else {
 				renderCsvAsTable(csvString, tableContainer);
 				messageBubble.appendChild(tableContainer);
@@ -381,14 +430,19 @@ function addMessage(sender, content, doSave = true) {
 				it.textContent = label;
 				it.addEventListener('click', () => { try { onClick(); } finally { hideMenu(); } });
 				menu.appendChild(it);
+				return it;
 			};
 
-			if (deferredContent) {
-				addItem('⤵ 展开结果', () => { try { deferredContent(); } catch (_) {} });
-			}
 			if (csvString && csvString.trim() !== '') {
+				tableMenuToggleItem = addItem(currentExpanded ? '⤴ 收起结果' : '⤵ 展开结果', () => {
+					const next = setTableVisibility(!currentExpanded);
+					setAutoExpandPreference(next);
+				});
 				addItem('⬇ 下载Excel', () => downloadAsExcel(csvString));
 				addItem('📋 复制CSV', () => { try { navigator.clipboard.writeText(csvString); updateUploadStatus('已复制到剪贴板'); } catch (_) {} });
+			}
+			if (deferredContent) {
+				addItem('📊 展开图表', () => { try { deferredContent(); } catch (_) {} });
 			}
 			if (chartOption) {
 				addItem('🖼 下载图片', () => exportChartImage(messageBubble));
