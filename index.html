@@ -8,6 +8,17 @@
     <script type="module" src="/src/main.js"></script>
 </head>
 <body>
+    <!-- 移动端顶部栏（桌面端隐藏） -->
+    <header id="mobile-topbar" class="mobile-topbar" aria-label="移动端导航" hidden>
+        <button type="button" id="mobile-menu-toggle" class="mobile-icon-btn" aria-label="打开侧边栏">☰</button>
+        <div class="mobile-brand">
+            <span class="brand-name">智表</span>
+            <span class="brand-sub">对话式表格</span>
+        </div>
+        <div class="mobile-actions">
+            <button id="mobile-dark-toggle" class="mobile-icon-btn" type="button" aria-label="切换主题">🌙</button>
+        </div>
+    </header>
     <aside id="sidebar">
         <div class="sidebar-header">
             <div class="brand">
@@ -185,6 +196,8 @@
             </div>
         </div>
     </main>
+    <!-- 移动端抽屉幕布 -->
+    <div id="mobile-backdrop" class="mobile-backdrop" hidden aria-hidden="true"></div>
     <!-- 引导覆盖层 -->
     <div id="guide-overlay" class="guide-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="guide-title">
         <div class="guide-backdrop" aria-hidden="true"></div>

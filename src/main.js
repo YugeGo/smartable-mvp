@@ -64,6 +64,10 @@ const dtExportCsv = document.getElementById('dt-export-csv');
 const dtReset = document.getElementById('dt-reset');
 const dtHint = document.getElementById('dt-hint');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
+const mobileTopbar = document.getElementById('mobile-topbar');
+const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
+const mobileBackdrop = document.getElementById('mobile-backdrop');
+const mobileDarkToggle = document.getElementById('mobile-dark-toggle');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
 const templateSelect = document.getElementById('template-select');
@@ -614,6 +618,7 @@ initializeGuide();
 initializeProductIntro();
 initializeToolCollapse();
 initializeSidebarSectionCollapse();
+initializeMobileLayout();
 
 const dataInputColumn = document.getElementById('data-input-column');
 if (dataInputColumn) {
@@ -1673,6 +1678,43 @@ function initializeThemeControls() {
 			applyDarkMode(isDarkMode);
 			rerenderAllCharts();
 		});
+	}
+	if (mobileDarkToggle) {
+		mobileDarkToggle.addEventListener('click', () => {
+			if (darkModeToggle) darkModeToggle.click();
+		});
+	}
+}
+
+// --- 移动端抽屉与顶部栏 ---
+function initializeMobileLayout() {
+	updateMobileTopbarVisibility();
+	window.addEventListener('resize', updateMobileTopbarVisibility);
+	if (mobileMenuToggle) {
+		mobileMenuToggle.addEventListener('click', () => {
+			document.getElementById('sidebar')?.classList.add('open');
+			if (mobileBackdrop) { mobileBackdrop.hidden = false; mobileBackdrop.setAttribute('aria-hidden','false'); }
+		});
+	}
+	if (mobileBackdrop) {
+		mobileBackdrop.addEventListener('click', closeMobileDrawer);
+	}
+}
+
+function closeMobileDrawer() {
+	const sidebar = document.getElementById('sidebar');
+	if (sidebar) sidebar.classList.remove('open');
+	if (mobileBackdrop) { mobileBackdrop.hidden = true; mobileBackdrop.setAttribute('aria-hidden', 'true'); }
+}
+
+function updateMobileTopbarVisibility() {
+	const isMobile = window.matchMedia('(max-width: 768px)').matches;
+	if (!mobileTopbar) return;
+	if (isMobile) {
+		mobileTopbar.hidden = false;
+	} else {
+		mobileTopbar.hidden = true;
+		closeMobileDrawer();
 	}
 }
 
