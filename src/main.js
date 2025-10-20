@@ -2,26 +2,9 @@
 // 平台标记：根据视口打 `.is-mobile/.is-desktop`，用于样式隔离
 import '../apps/shared/initPlatform.js';
 import '../style.css';
-import Papa from 'papaparse';
-
-// 动态按需加载大型依赖，减少首包体积
-let _echartsMod = null;
-async function getEcharts() {
-	if (_echartsMod) return _echartsMod;
-	const mod = await import('echarts');
-	_echartsMod = mod?.default || mod; // 兼容不同打包格式
-	try { window.echarts = _echartsMod; } catch (_) {}
-	return _echartsMod;
-}
-
-let _xlsxMod = null;
-async function getXLSX() {
-	if (_xlsxMod) return _xlsxMod;
-	const mod = await import('xlsx');
-	_xlsxMod = mod?.default || mod;
-	try { window.XLSX = _xlsxMod; } catch (_) {}
-	return _xlsxMod;
-}
+import { parseCsvToAoA, unparseAoAToCsv } from '../packages/core/csv.js';
+import { getEcharts, getXLSX } from '../packages/core/charts.js';
+import { callProcessApi } from '../packages/core/api.js';
 
 // --- 以下为原 script.js 逻辑（已直接内联到模块中） ---
 
@@ -112,31 +95,7 @@ const UNDO_LIMIT = 20;
 const tableUndoStack = new Map(); // tableName -> string[]
 const tableRedoStack = new Map(); // tableName -> string[]
 
-// --- CSV 解析/序列化辅助（基于 Papa Parse） ---
-function parseCsvToAoA(csvString) {
-	if (!csvString || typeof csvString !== 'string' || csvString.trim() === '') {
-		return [];
-	}
-	const res = Papa.parse(csvString, {
-		delimiter: '', // 自动检测
-		newline: '', // 自动检测
-		skipEmptyLines: false
-	});
-	if (res.errors && res.errors.length > 0) {
-		console.warn('CSV parse errors:', res.errors.slice(0, 3));
-	}
-	return Array.isArray(res.data) ? res.data : [];
-}
-
-function unparseAoAToCsv(aoa) {
-	if (!Array.isArray(aoa)) return '';
-	try {
-		return Papa.unparse(aoa, { newline: '\n' });
-	} catch (e) {
-		console.warn('CSV unparse failed, fallback to join:', e);
-		return aoa.map(row => (Array.isArray(row) ? row.join(',') : String(row ?? ''))).join('\n');
-	}
-}
+// CSV 解析/序列化已移动到 packages/core/csv.js
 
 var CHART_COLOR_PRESETS = Object.freeze({
 	classic: ['#2563eb', '#a855f7', '#14b8a6', '#f97316', '#facc15', '#ec4899'],
@@ -1996,32 +1955,7 @@ function showChartPrompt(reason, tableName) {
 	messageList.scrollTop = messageList.scrollHeight;
 }
 
-// --- 4. API Helpers ---
-async function callProcessApi(payload, { timeoutMs = 30000 } = {}) {
-	const controller = new AbortController();
-	const timer = setTimeout(() => controller.abort(), timeoutMs);
-	try {
-		// 优先尝试相对路径（本地 dev / 生产带 redirects）
-		let resp = await fetch('/api/process', {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/json' },
-			body: JSON.stringify(payload),
-			signal: controller.signal
-		});
-		if (resp.status === 404) {
-			// 在某些托管环境中，/api/* 重写可能未生效，回退到 Netlify 函数显式路径
-			resp = await fetch('/.netlify/functions/process', {
-				method: 'POST',
-				headers: { 'Content-Type': 'application/json' },
-				body: JSON.stringify(payload),
-				signal: controller.signal
-			});
-		}
-		return resp;
-	} finally {
-		clearTimeout(timer);
-	}
-}
+// API 调用已移动到 packages/core/api.js
 
 // --- 5. Samples & Export Helpers ---
 async function loadSampleDataset(fileName) {
