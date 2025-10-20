@@ -5,6 +5,22 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智表 (Smartable) - AI表格助手 MVP</title>
     <!-- 使用 Vite/模块化入口（CSS 由 src/main.js 引入） -->
+        <script>
+            (function () {
+                try {
+                    var params = new URLSearchParams(location.search || '');
+                    if (params.get('no-redirect') === '1') return; // 手动禁用
+                    var path = (location.pathname || '/').replace(/\/+$/, '');
+                    var isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+                    if (!isMobile) return; // 仅在移动端跳转
+                    // 已在移动入口则不再跳
+                    if (path.startsWith('/m') || path.startsWith('/apps/mobile')) return;
+                    var isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname || '');
+                    var target = isLocal ? '/apps/mobile/' : '/m/';
+                    location.replace(target);
+                } catch (e) { /* no-op */ }
+            })();
+        </script>
     <script type="module" src="/src/main.js"></script>
 </head>
 <body>
