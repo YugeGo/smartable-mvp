@@ -54,6 +54,7 @@ const dataPasteClose = document.getElementById('data-paste-close');
 const newSessionBtn = document.getElementById('new-session-btn');
 const mobilePlusBtn = document.getElementById('mobile-plus-btn');
 const mobileQuickActions = document.getElementById('mobile-quick-actions');
+const mobileViewportSpacer = document.getElementById('mobile-viewport-spacer');
 const datasetTray = document.getElementById('dataset-tray');
 const dataPreviewSection = document.getElementById('data-preview');
 const dataPreviewTitle = document.getElementById('data-preview-title');
@@ -842,6 +843,58 @@ initializeThemeControls();
 initializeStyleControls();
 initializeChartShortcuts();
 initializeOnboarding();
+initializeMobileViewportAdjustments();
+
+function initializeMobileViewportAdjustments() {
+	if (!mobileViewportSpacer) {
+		return;
+	}
+
+	const updateSpacer = () => {
+		const safeInset = getSafeInsetBottom();
+		const keyboardOffset = calculateKeyboardOffset();
+		const paddingValue = Math.max(safeInset, keyboardOffset);
+		mobileViewportSpacer.style.height = `${paddingValue}px`;
+	};
+
+	updateSpacer();
+
+	if (window.visualViewport) {
+		const viewport = window.visualViewport;
+		viewport.addEventListener('resize', updateSpacer);
+		viewport.addEventListener('scroll', updateSpacer);
+	}
+
+	window.addEventListener('orientationchange', () => {
+		setTimeout(updateSpacer, 150);
+	});
+}
+
+function getSafeInsetBottom() {
+	if (typeof window === 'undefined') {
+		return 0;
+	}
+
+	const testVar = getComputedStyle(document.documentElement).getPropertyValue('--safe-inset-bottom');
+	const parsed = Number.parseInt(testVar, 10);
+	return Number.isFinite(parsed) ? parsed : 0;
+}
+
+function calculateKeyboardOffset() {
+	if (typeof window === 'undefined' || !window.visualViewport) {
+		return 0;
+	}
+
+	try {
+		const viewport = window.visualViewport;
+		const layoutViewportHeight = window.innerHeight || document.documentElement.clientHeight || 0;
+		const delta = layoutViewportHeight - viewport.height - viewport.offsetTop;
+		return delta > 0 ? Math.ceil(delta) : 0;
+	} catch (error) {
+		console.warn('Failed to compute keyboard offset:', error);
+		return 0;
+	}
+}
 initializeGuide();
 initializeProductIntro();
 initializeToolCollapse();
