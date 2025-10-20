@@ -42,6 +42,8 @@ const dataPasteSubmit = document.getElementById('data-paste-submit');
 const dataPasteCancel = document.getElementById('data-paste-cancel');
 const dataPasteClose = document.getElementById('data-paste-close');
 const newSessionBtn = document.getElementById('new-session-btn');
+const mobilePlusBtn = document.getElementById('mobile-plus-btn');
+const mobileQuickActions = document.getElementById('mobile-quick-actions');
 const datasetTray = document.getElementById('dataset-tray');
 const dataPreviewSection = document.getElementById('data-preview');
 const dataPreviewTitle = document.getElementById('data-preview-title');
@@ -260,10 +262,17 @@ function addMessage(sender, content, doSave = true) {
 			messageBubble.classList.add('chart-message');
 		}
 
+		const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+		let deferredContent = null;
+		let expandBtn = null;
 		if (csvString && csvString.trim() !== '') {
 			const tableContainer = document.createElement('div');
 			tableContainer.classList.add('table-wrapper');
-			renderCsvAsTable(csvString, tableContainer);
+			if (isMobile) {
+				deferredContent = () => renderCsvAsTable(csvString, tableContainer);
+			} else {
+				renderCsvAsTable(csvString, tableContainer);
+			}
 			messageBubble.appendChild(tableContainer);
 			rendered = true;
 		}
@@ -280,7 +289,15 @@ function addMessage(sender, content, doSave = true) {
 			} catch (error) {
 				console.error('Failed to cache chart option:', error);
 			}
-			setTimeout(() => renderChart(chartOption, chartContainer), 0);
+			if (isMobile) {
+				const prevDeferred = deferredContent;
+				deferredContent = () => {
+					if (prevDeferred) try { prevDeferred(); } catch (_) {}
+					renderChart(chartOption, chartContainer);
+				};
+			} else {
+				setTimeout(() => renderChart(chartOption, chartContainer), 0);
+			}
 			rendered = true;
 		}
 
@@ -303,6 +320,21 @@ function addMessage(sender, content, doSave = true) {
 				actionsContainer.appendChild(exportImgBtn);
 			}
 			messageBubble.appendChild(actionsContainer);
+		}
+
+		// 移动端默认折叠结果：显示“展开结果”按钮
+		if (isMobile && deferredContent) {
+			expandBtn = document.createElement('button');
+			expandBtn.classList.add('action-btn');
+			expandBtn.textContent = '⬇ 展开结果';
+			expandBtn.addEventListener('click', () => {
+				try { deferredContent(); } catch (_) {}
+				expandBtn.remove();
+			});
+			const expWrap = document.createElement('div');
+			expWrap.classList.add('action-buttons');
+			expWrap.appendChild(expandBtn);
+			messageBubble.appendChild(expWrap);
 		}
 
 		if (!rendered) {
@@ -581,6 +613,42 @@ if (newSessionBtn) {
 		if (confirm('确定要开始一个新会话吗？当前所有数据和对话历史都将被清除。')) {
 			localStorage.removeItem(STORAGE_KEYS.session);
 			window.location.reload();
+		}
+	});
+}
+
+// 移动端输入区“更多”菜单
+if (mobilePlusBtn && mobileQuickActions) {
+	mobilePlusBtn.addEventListener('click', () => {
+		const isHidden = mobileQuickActions.hasAttribute('hidden');
+		if (isHidden) {
+			mobileQuickActions.removeAttribute('hidden');
+			mobileQuickActions.setAttribute('aria-hidden', 'false');
+		} else {
+			mobileQuickActions.setAttribute('hidden', '');
+			mobileQuickActions.setAttribute('aria-hidden', 'true');
+		}
+	});
+	mobileQuickActions.addEventListener('click', (e) => {
+		const btn = e.target.closest('.mobile-qa-item');
+		if (!btn) return;
+		const act = btn.getAttribute('data-act');
+		if (act === 'upload') {
+			if (uploadBtn) uploadBtn.click();
+		} else if (act === 'paste') {
+			if (pasteBtn) pasteBtn.click();
+		} else if (act === 'new') {
+			if (newSessionBtn) newSessionBtn.click();
+		}
+		mobileQuickActions.setAttribute('hidden', '');
+		mobileQuickActions.setAttribute('aria-hidden', 'true');
+	});
+	document.addEventListener('click', (e) => {
+		if (!mobileQuickActions.contains(e.target) && e.target !== mobilePlusBtn) {
+			if (!mobileQuickActions.hasAttribute('hidden')) {
+				mobileQuickActions.setAttribute('hidden', '');
+				mobileQuickActions.setAttribute('aria-hidden', 'true');
+			}
 		}
 	});
 }

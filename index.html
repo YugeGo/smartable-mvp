@@ -186,6 +186,12 @@
             </section>
             <div id="upload-status" aria-live="polite" role="status"></div>
             <div id="input-area">
+                <button id="mobile-plus-btn" class="input-btn" aria-label="更多操作" title="更多">＋</button>
+                <div id="mobile-quick-actions" class="mobile-quick-actions" hidden aria-hidden="true" role="menu">
+                    <button type="button" class="mobile-qa-item" data-act="upload" role="menuitem">📎 上传文件</button>
+                    <button type="button" class="mobile-qa-item" data-act="paste" role="menuitem">📋 粘贴数据</button>
+                    <button type="button" class="mobile-qa-item" data-act="new" role="menuitem">🔄 新会话</button>
+                </div>
                 <button id="new-session-btn" class="input-btn" aria-label="新会话">🔄</button>
                 <button id="upload-btn" class="input-btn">📎</button>
                 <input type="file" id="file-upload-input" style="display: none;">

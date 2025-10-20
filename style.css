@@ -1834,7 +1834,7 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 		position: sticky;
 		bottom: 0;
 		z-index: 5;
-		padding-bottom: calc(1rem + env(safe-area-inset-bottom, 0px));
+		padding-bottom: calc(.5rem + env(safe-area-inset-bottom, 0px));
 	}
 
 	/* 消息列表底部留白，避免被输入区遮挡 */
@@ -1890,6 +1890,14 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 
 	/* 移动端没有 hover，操作按钮默认展示 */
 	.ai-message .action-buttons { display: flex; }
+
+	/* 移动端输入区“更多”菜单 */
+	.mobile-quick-actions[hidden] { display: none; }
+	.mobile-quick-actions { position: absolute; bottom: calc(100% + 8px); left: 8px; background: rgba(248,250,252,.98); border: 1px solid rgba(148,163,184,.3); border-radius: 12px; box-shadow: 0 12px 24px rgba(15,23,42,.2); padding: .5rem; display: flex; flex-direction: column; gap: .25rem; z-index: 6; }
+	body.dark-mode .mobile-quick-actions { background: rgba(17,24,39,.96); border-color: rgba(148,163,184,.28); }
+	.mobile-qa-item { text-align: left; border-radius: 10px; border: 1px solid rgba(148,163,184,.28); background: transparent; color: var(--text-primary); padding: .5rem .75rem; }
+	.mobile-qa-item:active, .mobile-qa-item:hover { background: rgba(219,234,254,.9); border-color: rgba(37,99,235,.35); }
+	body.dark-mode .mobile-qa-item:active, body.dark-mode .mobile-qa-item:hover { background: rgba(37,99,235,.2); border-color: rgba(96,165,250,.45); }
 }
 
 /*
