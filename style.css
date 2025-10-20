@@ -1842,18 +1842,17 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 	}
 
 	#input-area {
-		flex-direction: column;
-		align-items: stretch;
+		flex-direction: row;
+		align-items: center;
+		gap: .6rem;
 		position: sticky;
 		bottom: 0;
 		z-index: 5;
-		padding-bottom: calc(.5rem + env(safe-area-inset-bottom, 0px));
+		padding: .6rem .75rem calc(.6rem + env(safe-area-inset-bottom, 0px));
 	}
 
 	/* 消息列表底部留白，避免被输入区遮挡 */
-	#message-list {
-		padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
-	}
+	#message-list { padding-bottom: calc(5.5rem + env(safe-area-inset-bottom, 0px)); }
 
 	#chart-shortcuts {
 		padding: 1rem 1.1rem;
@@ -1879,17 +1878,18 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 		text-align: center;
 	}
 
-	.input-btn {
-		width: 100%;
-		border-radius: 14px;
-		font-size: 1.2rem;
-	}
+	/* 仅保留底部输入框与发送按钮 */
+	#new-session-btn,
+	#upload-btn,
+	#paste-btn,
+	#dark-mode-toggle { display: none; }
 
-	textarea#command-input {
-		width: 100%;
-		font-size: 16px; /* 避免 iOS 输入放大 */
-		min-height: 3.5rem;
-	}
+	textarea#command-input { flex: 1; width: auto; font-size: 16px; min-height: 2.8rem; max-height: 8rem; }
+	#send-btn.input-btn { min-width: 48px; width: 48px; height: 48px; border-radius: 16px; font-size: 1.15rem; }
+
+	/* 浮动“＋”按钮（FAB） */
+	#mobile-plus-btn.input-btn { position: fixed; left: 16px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px; border-radius: 50%; background: rgba(248,250,252,.95); backdrop-filter: blur(8px); box-shadow: 0 14px 28px rgba(15,23,42,.25); z-index: 6; }
+	body.dark-mode #mobile-plus-btn.input-btn { background: rgba(30,41,59,.95); }
 
 	/* 增大触控尺寸 */
 	.data-tools select,
@@ -1906,9 +1906,9 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 
 	/* 移动端输入区“更多”菜单 */
 	.mobile-quick-actions[hidden] { display: none; }
-	.mobile-quick-actions { position: absolute; bottom: calc(100% + 8px); left: 8px; background: rgba(248,250,252,.98); border: 1px solid rgba(148,163,184,.3); border-radius: 12px; box-shadow: 0 12px 24px rgba(15,23,42,.2); padding: .5rem; display: flex; flex-direction: column; gap: .25rem; z-index: 6; }
+	.mobile-quick-actions { position: fixed; left: 16px; bottom: calc(130px + env(safe-area-inset-bottom, 0px)); min-width: 180px; background: rgba(248,250,252,.98); border: 1px solid rgba(148,163,184,.3); border-radius: 14px; box-shadow: 0 16px 28px rgba(15,23,42,.25); padding: .5rem; display: flex; flex-direction: column; gap: .3rem; z-index: 7; }
 	body.dark-mode .mobile-quick-actions { background: rgba(17,24,39,.96); border-color: rgba(148,163,184,.28); }
-	.mobile-qa-item { text-align: left; border-radius: 10px; border: 1px solid rgba(148,163,184,.28); background: transparent; color: var(--text-primary); padding: .5rem .75rem; }
+	.mobile-qa-item { text-align: left; border-radius: 12px; border: 1px solid rgba(148,163,184,.28); background: transparent; color: var(--text-primary); padding: .6rem .8rem; }
 	.mobile-qa-item:active, .mobile-qa-item:hover { background: rgba(219,234,254,.9); border-color: rgba(37,99,235,.35); }
 	body.dark-mode .mobile-qa-item:active, body.dark-mode .mobile-qa-item:hover { background: rgba(37,99,235,.2); border-color: rgba(96,165,250,.45); }
 }
