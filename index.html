@@ -209,6 +209,11 @@
                 </div>
             </section>
             <div id="upload-status" aria-live="polite" role="status"></div>
+            <div id="input-prompts" class="input-prompts" aria-label="快捷提示" role="list">
+                <button type="button" class="input-prompt-chip" data-fill="请生成一份趋势折线图，自动选择横轴与关键指标，并返回CSV与ECharts配置">📈 趋势图</button>
+                <button type="button" class="input-prompt-chip" data-fill="请对当前数据做Top-10汇总，仅返回包含前10条的表格，并保持原有列名不变">🔟 Top-10汇总</button>
+                <button type="button" class="input-prompt-chip" data-fill="请清洗空值与异常值，保留原列名并输出清洗后的表格">🧹 清洗空值</button>
+            </div>
             <div id="input-area">
                 <button id="mobile-plus-btn" class="input-btn" aria-label="更多操作" title="更多">＋</button>
                 <div id="mobile-quick-actions" class="mobile-quick-actions" hidden aria-hidden="true" role="menu">

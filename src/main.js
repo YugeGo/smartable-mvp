@@ -20,6 +20,7 @@ const onboardingBanner = document.getElementById('onboarding-banner');
 const bannerCloseBtn = document.getElementById('banner-close');
 const uploadStatus = document.getElementById('upload-status');
 const promptChips = document.querySelectorAll('.prompt-chip');
+const inputPromptChips = document.querySelectorAll('#input-prompts .input-prompt-chip');
 const demoButtons = document.querySelectorAll('.demo-btn');
 const pasteBtn = document.getElementById('paste-btn');
 const dataInputPanel = document.getElementById('data-input-panel');
@@ -984,6 +985,17 @@ function initializeOnboarding() {
 			if (preset) {
 				commandInput.value = preset;
 				commandInput.focus();
+			}
+		});
+	});
+
+	// 输入框上方快捷提示
+	inputPromptChips.forEach(chip => {
+		chip.addEventListener('click', () => {
+			const preset = chip.getAttribute('data-fill') || '';
+			if (preset) {
+				commandInput.value = preset;
+				handleSendMessage();
 			}
 		});
 	});

@@ -1445,6 +1445,12 @@ body.dark-mode .input-btn.loading::after {
 	background: rgba(248, 250, 252, 0.9);
 }
 
+/* 输入框快捷提示（桌面端显示，移动端可按需隐藏） */
+#input-prompts { display: flex; flex-wrap: wrap; gap: .5rem; margin: .25rem 0 .5rem; }
+.input-prompt-chip { border: 1px solid rgba(148,163,184,.3); background: rgba(248,250,252,.95); color: var(--accent-strong); padding: .35rem .7rem; border-radius: 999px; font-size: .9rem; box-shadow: 0 8px 16px rgba(148,163,184,.18); cursor: pointer; transition: var(--transition); }
+.input-prompt-chip:hover { background: rgba(219,234,254,.92); border-color: rgba(37,99,235,.4); color: #0f172a; transform: translateY(-1px); }
+@media (max-width: 768px) { #input-prompts { display: none; } }
+
 #upload-status.success {
 	color: #15803d;
 	border-color: rgba(34, 197, 94, 0.32);
