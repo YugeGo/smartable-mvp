@@ -49,6 +49,7 @@ const dataPreviewSection = document.getElementById('data-preview');
 const dataPreviewTitle = document.getElementById('data-preview-title');
 const dataPreviewTable = document.getElementById('data-preview-table');
 const dataPreviewFootnote = document.getElementById('data-preview-footnote');
+const mobileWelcome = document.getElementById('mobile-welcome');
 // Data tools elements
 const dtToolbar = document.getElementById('data-tools');
 const dtToggle = document.getElementById('dt-toggle');
@@ -990,6 +991,8 @@ function initializeOnboarding() {
 	});
 
 	renderDataSourceList();
+	updateMobileWelcomeVisibility();
+	bindMobileWelcomeExamples();
 }
 
 function openDataInputPanel() {
@@ -1446,6 +1449,7 @@ function renderDataSourceList() {
 	});
 
 	renderActiveTablePreview();
+	updateMobileWelcomeVisibility();
 }
 
 function getTableStats(csvString) {
@@ -1599,6 +1603,7 @@ function setActiveTable(tableName) {
 	updateUploadStatus(`📊 当前数据源: ${tableName} · ${columnCount} 列 · ${rowCount} 行`);
 	saveSession();
 	syncChartShortcutButtons();
+	updateMobileWelcomeVisibility();
 	// 清空该表的历史（新活跃表）
 	tableUndoStack.set(tableName, []);
 	tableRedoStack.set(tableName, []);
@@ -1636,6 +1641,7 @@ function removeTable(tableName) {
 	renderDataSourceList();
 	saveSession();
 	syncChartShortcutButtons();
+	updateMobileWelcomeVisibility();
 }
 
 function saveSession() {
@@ -1691,6 +1697,7 @@ function loadSession() {
 
 		renderDataSourceList();
 		syncChartShortcutButtons();
+		updateMobileWelcomeVisibility();
 	// 初始化历史
 	Object.keys(workspace).forEach(name => { tableUndoStack.set(name, []); tableRedoStack.set(name, []); });
 	updateUndoRedoButtons();
@@ -1701,6 +1708,36 @@ function loadSession() {
 		localStorage.removeItem(STORAGE_KEYS.session);
 		return false;
 	}
+}
+
+function updateMobileWelcomeVisibility() {
+	const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+	if (!mobileWelcome) return;
+	const hasData = Object.keys(workspace || {}).length > 0;
+	const hasMessages = (messages || []).length > 0;
+	const showWelcome = isMobile && !hasData && !hasMessages;
+	mobileWelcome.hidden = !showWelcome;
+	mobileWelcome.setAttribute('aria-hidden', showWelcome ? 'false' : 'true');
+	// 与 Onboarding 互斥
+	if (onboardingBanner) {
+		if (showWelcome) {
+			onboardingBanner.classList.add('hidden');
+			onboardingBanner.setAttribute('aria-hidden','true');
+		}
+	}
+}
+
+function bindMobileWelcomeExamples() {
+	if (!mobileWelcome) return;
+	mobileWelcome.querySelectorAll('.mw-example').forEach(btn => {
+		btn.addEventListener('click', () => {
+			const preset = btn.getAttribute('data-fill') || '';
+			if (preset && commandInput) {
+				commandInput.value = preset;
+				commandInput.focus();
+			}
+		});
+	});
 }
 
 async function rerenderAllCharts() {

@@ -133,6 +133,26 @@
                     <span class="dataset-empty">尚未上传数据</span>
                 </div>
             </header>
+            <!-- 移动端欢迎页（与 Onboarding 互斥，仅在无会话/无数据时显示） -->
+            <section id="mobile-welcome" class="mobile-welcome" hidden aria-hidden="true" aria-label="欢迎">
+                <h1 class="mw-title">智表</h1>
+                <div class="mw-subtitle">对话式表格助手</div>
+                <div class="mw-group">
+                    <h3 class="mw-heading">示例</h3>
+                    <div class="mw-cards" role="list">
+                        <button type="button" class="mw-card mw-example" role="listitem" data-fill="请帮我整理出每周的销售额，并生成汇总表">“整理每周销售额” →</button>
+                        <button type="button" class="mw-card mw-example" role="listitem" data-fill="从这些客服对话中提炼出前三大问题，并做统计">“提炼客服问题” →</button>
+                        <button type="button" class="mw-card mw-example" role="listitem" data-fill="把原始订单数据转换成城市维度的对比表">“城市对比表” →</button>
+                    </div>
+                </div>
+                <div class="mw-group">
+                    <h3 class="mw-heading">能力</h3>
+                    <ul class="mw-list">
+                        <li>理解自然语言，自动清洗与整理表格</li>
+                        <li>生成统计图表，支持导出图片与 Excel</li>
+                    </ul>
+                </div>
+            </section>
             <section id="onboarding-banner" aria-label="快速开始指引">
                 <div class="onboarding-primary">
                     <div class="onboarding-icon" aria-hidden="true">📊</div>

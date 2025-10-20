@@ -23,28 +23,29 @@
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500&display=swap');
 
 :root {
-	--bg-gradient: radial-gradient(circle at 12% 20%, rgba(125, 211, 252, 0.55) 0%, rgba(125, 211, 252, 0) 45%), radial-gradient(circle at 82% 0%, rgba(196, 181, 253, 0.6) 0%, rgba(196, 181, 253, 0) 40%), linear-gradient(160deg, #f8fafc 0%, #e2e8f0 100%);
+	/* 更克制的浅色背景与色彩，兼顾质感 */
+	--bg-gradient: linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
 	--glass-surface: rgba(255, 255, 255, 0.78);
 	--glass-border: rgba(148, 163, 184, 0.35);
-	--text-primary: #1f2937;
+	--text-primary: #0f172a;
 	--text-muted: rgba(71, 85, 105, 0.75);
 	--bubble-shadow: 0 18px 36px rgba(148, 163, 184, 0.28);
 	--transition: all 0.25s ease;
-	--accent: #2563eb;
-	--accent-strong: #1d4ed8;
-	--accent-soft: rgba(59, 130, 246, 0.16);
+	--accent: #3b82f6;
+	--accent-strong: #2563eb;
+	--accent-soft: rgba(59, 130, 246, 0.14);
 	--ai-surface: rgba(248, 250, 252, 0.92);
 	--user-gradient: linear-gradient(135deg, #60a5fa 0%, #c084fc 100%);
 	--surface-elevated: rgba(241, 245, 249, 0.9);
 }
 
 body.dark-mode {
-	--bg-gradient: radial-gradient(circle at 12% 20%, rgba(59, 130, 246, 0.22) 0%, rgba(59, 130, 246, 0) 45%), radial-gradient(circle at 82% 0%, rgba(168, 85, 247, 0.18) 0%, rgba(168, 85, 247, 0) 40%), linear-gradient(160deg, #0f172a 0%, #111827 100%);
+	--bg-gradient: linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
 	--glass-surface: rgba(17, 24, 39, 0.82);
 	--glass-border: rgba(148, 163, 184, 0.2);
-	--text-primary: #e2e8f0;
+	--text-primary: #e5e7eb;
 	--text-muted: rgba(148, 163, 184, 0.75);
-	--bubble-shadow: 0 18px 36px rgba(15, 23, 42, 0.7);
+	--bubble-shadow: 0 18px 36px rgba(2, 6, 23, 0.8);
 	--accent: #60a5fa;
 	--accent-strong: #38bdf8;
 	--accent-soft: rgba(56, 189, 248, 0.2);
@@ -1693,6 +1694,17 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 }
 
 @media (max-width: 768px) {
+	/* 欢迎页（移动端） */
+	.mobile-welcome[hidden] { display: none; }
+	.mobile-welcome { display: flex; flex-direction: column; gap: .9rem; align-items: stretch; padding: 1rem 1rem 0; }
+	.mobile-welcome .mw-title { margin: .25rem 0 0; text-align: center; font-family: 'Space Grotesk','Inter',sans-serif; font-weight: 600; letter-spacing: .02em; }
+	.mobile-welcome .mw-subtitle { text-align: center; color: var(--text-muted); font-size: 14px; }
+	.mobile-welcome .mw-group { display: flex; flex-direction: column; gap: .6rem; }
+	.mobile-welcome .mw-heading { margin: 0; font-size: .9rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: .35rem; }
+	.mobile-welcome .mw-cards { display: grid; grid-template-columns: 1fr; gap: .5rem; }
+	.mobile-welcome .mw-card { border-radius: 14px; border: 1px solid rgba(148,163,184,.28); background: rgba(248,250,252,.9); color: var(--text-primary); padding: .75rem .9rem; text-align: left; box-shadow: 0 10px 20px rgba(148,163,184,.18); }
+	body.dark-mode .mobile-welcome .mw-card { background: rgba(30,41,59,.92); border-color: rgba(148,163,184,.28); }
+	.mobile-welcome .mw-list { margin: 0; padding-left: 1.1rem; color: var(--text-muted); }
 	body {
 		flex-direction: column;
 		padding: 1.5rem 1rem;
