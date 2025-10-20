@@ -707,6 +707,51 @@ initializeProductIntro();
 initializeToolCollapse();
 initializeSidebarSectionCollapse();
 initializeMobileLayout();
+setupEdgeMobileUploadWorkaround();
+
+// Edge 移动端上传兜底：部分 Edge(Android/iOS) 会将隐藏 input 的程序化点击映射到“相机/媒体”，并触发媒体权限。
+// 这里在“上传文件”菜单项内嵌一个透明的 file input，让用户直接点到 input，从而调用系统文件选择器。
+function setupEdgeMobileUploadWorkaround() {
+	try {
+		const ua = navigator.userAgent || navigator.vendor || '';
+		const isMobile = /Mobile|Android|iPhone|iPad/i.test(ua);
+		const isEdge = /EdgA|EdgiOS/i.test(ua);
+		if (!isMobile || !isEdge) return;
+		if (!mobileQuickActions) return;
+		const uploadItem = mobileQuickActions.querySelector('.mobile-qa-item[data-act="upload"]');
+		if (!uploadItem) return;
+		// 避免重复注入
+		if (uploadItem.querySelector('input[type="file"]')) return;
+
+		uploadItem.style.position = 'relative';
+		const inlineInput = document.createElement('input');
+		inlineInput.type = 'file';
+		inlineInput.accept = '.csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
+		inlineInput.style.position = 'absolute';
+		inlineInput.style.inset = '0';
+		inlineInput.style.opacity = '0';
+		inlineInput.style.width = '100%';
+		inlineInput.style.height = '100%';
+		inlineInput.style.cursor = 'pointer';
+		inlineInput.style.zIndex = '2';
+		// 防止冒泡到父级 click 逻辑，导致菜单提前关闭
+		inlineInput.addEventListener('click', (e) => e.stopPropagation());
+		inlineInput.addEventListener('change', (e) => {
+			try { handleFileSelect(e); } finally {
+				// 选择结束后再关闭菜单
+				if (mobileQuickActions) {
+					mobileQuickActions.setAttribute('hidden', '');
+					mobileQuickActions.setAttribute('aria-hidden', 'true');
+				}
+				// 清理 value，便于重复选择同一个文件也能触发 change
+				inlineInput.value = '';
+			}
+		});
+		uploadItem.appendChild(inlineInput);
+	} catch (_) {
+		// 忽略兜底失败，不影响其他浏览器
+	}
+}
 
 const dataInputColumn = document.getElementById('data-input-column');
 if (dataInputColumn) {
