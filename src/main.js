@@ -685,29 +685,18 @@ async function handleFileSelect(event) {
 				return;
 			}
 
-			const rawCsvString = XLSX.utils.sheet_to_csv(worksheet);
-			if (!rawCsvString || rawCsvString.trim() === '') {
-				return;
-			}
-
-			const aoa = parseCsvToAoA(rawCsvString);
-			const finalCsvString = unparseAoAToCsv(aoa);
-			if (!finalCsvString || finalCsvString.trim() === '') {
-				return;
-			}
-
-			const headers = extractHeaders(finalCsvString);
+			const rawAoA = XLSX.utils.sheet_to_json(worksheet, {
+				header: 1,
+				defval: ''
+			});
+			const { headers, rows } = sanitizeWorksheetAoA(rawAoA);
 			if (headers.length === 0) {
 				return;
 			}
 
-			const sanitizedAoa = parseCsvToAoA(finalCsvString);
-			if (!Array.isArray(sanitizedAoa) || sanitizedAoa.length === 0) {
-				return;
-			}
-
-			const dataRows = sanitizedAoa.slice(1);
-			const rowCount = Math.max(dataRows.length, 0);
+			const rowCount = rows.length;
+			const aoaForCsv = [headers, ...rows];
+			const finalCsvString = unparseAoAToCsv(aoaForCsv);
 			const tableName = buildSheetTableName(file.name, sheetName, takenNames);
 
 			importedSheets.push({
@@ -716,7 +705,7 @@ async function handleFileSelect(event) {
 				headers,
 				rowCount,
 				csv: finalCsvString,
-				rows: dataRows
+				rows
 			});
 		});
 
@@ -1297,6 +1286,56 @@ function buildUploadStatusText(file, entries) {
 	const base = parts.join(' · ');
 	const preview = formatSheetPreview(entries);
 	return preview ? `${base}：${preview}` : base;
+}
+
+function sanitizeWorksheetAoA(rawAoA) {
+	if (!Array.isArray(rawAoA) || rawAoA.length === 0) {
+		return { headers: [], rows: [] };
+	}
+
+	const hasMeaningfulValue = value => String(value ?? '').trim() !== '';
+	const firstContentIndex = rawAoA.findIndex(row => Array.isArray(row) && row.some(hasMeaningfulValue));
+	if (firstContentIndex === -1) {
+		return { headers: [], rows: [] };
+	}
+
+	const headerSource = Array.isArray(rawAoA[firstContentIndex]) ? rawAoA[firstContentIndex] : [];
+	const dataCandidates = rawAoA.slice(firstContentIndex + 1).filter(Array.isArray);
+
+	let maxLength = headerSource.length;
+	dataCandidates.forEach(row => {
+		if (row.length > maxLength) {
+			maxLength = row.length;
+		}
+	});
+
+	const headers = new Array(maxLength).fill('');
+	for (let i = 0; i < maxLength; i += 1) {
+		const rawHeader = headerSource[i];
+		const normalized = typeof rawHeader === 'string'
+			? rawHeader.trim()
+			: String(rawHeader ?? '').trim();
+		headers[i] = normalized || `列${i + 1}`;
+	}
+
+	const rows = [];
+	dataCandidates.forEach(row => {
+		const normalizedRow = new Array(maxLength).fill('');
+		let hasValue = false;
+		for (let i = 0; i < maxLength; i += 1) {
+			const cell = i < row.length ? row[i] : '';
+			const normalizedCell = cell ?? '';
+			if (!hasValue && hasMeaningfulValue(normalizedCell)) {
+				hasValue = true;
+			}
+			normalizedRow[i] = normalizedCell;
+		}
+		if (hasValue) {
+			rows.push(normalizedRow);
+		}
+	});
+
+	return { headers, rows };
 }
 
 function buildCombinedSheetEntry(fileName, sheetEntries, takenNames) {
