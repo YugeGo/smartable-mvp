@@ -1,127 +1,100 @@
 <div align="center">
 
-# 智表 Smartable
+# 智表 · Smartable
 
-对话式表格助手 · 用自然语言完成清洗、统计、出图与导出
+对话式表格助手｜通过自然语言完成清洗、统计、作图与导出
 
-[ 在线体验 ](https://smartable-mvp.netlify.app/) · [Issues](https://github.com/YugeGo/smartable-mvp/issues)
+[ 在线体验 ](https://smartable-mvp.netlify.app/) · [问题反馈](https://github.com/YugeGo/smartable-mvp/issues)
 
 </div>
 
-## 它能帮你什么？
+## 能解决什么场景？
 
-不懂 Excel 公式，也能把数据清洗、统计、出图、导出一气呵成：
+| 角色 | 典型诉求 | 智表能做什么 |
+| --- | --- | --- |
+| 运营/市场 | 多渠道日报、Top-K 榜单 | 自动聚合并输出图表与 CSV |
+| 客服/支持 | 聊天/工单分类、关键词统计 | 清洗文本、统计频次、生成可视化 |
+| 财务/行政 | 费用分摊、排课编排 | 解析多表 Excel、补全空值、导出汇总 |
 
-- 清洗：删空值、按列去重、筛选、排序、Top-K
-- 统计：按维度聚合、同比/环比、Top 榜、派生列
-- 可视化：折线/柱状/饼/堆叠/散点/雷达（模板一键生成）
-- 导出：表格导出 CSV/Excel、图表一键下载 PNG
-
-适合运营、市场、客服、财务等需要快速整表与汇报的人。
-
----
-
-## 主要特性（当前版本）
-
-- 一次上传/粘贴即可开始对话，连续多轮保持上下文
-- 常用图表模板与快捷按钮，生成后可直接下载图片
-- 数据工具（基础）：按列筛选/排序/Top-K、结果撤销、导出预览 CSV、重置到原始数据
-- 情景式提示：发现空值/重复时给出一键清理建议
-- 使用指南：场景化引导步骤，带高亮定位与动作触发
-- 侧栏最小化：产品介绍、使用指南、常用统计图支持折叠并记忆状态
-- 深/浅色主题切换，图表自动适配主题与配色
-- API 504 超时与 CSV 行数上限（200 行）双保险，避免长时卡顿
+无需记公式，上传（或粘贴）数据后直接描述需求即可，AI 会返回结构化表格与图表，并可导出 PNG / CSV / Excel。
 
 ---
 
-## 界面预览
+## 最新亮点
 
-- 单列对话区：AI 回复表格与图表，可悬浮显示“下载 Excel / 下载图片”
-- 侧栏：数据预览 + 工具、产品介绍与一键场景芯片、使用指南、常用统计图模板
-- 引导覆盖层：步骤标题/说明、进度、上一/下一步、目标区域脉冲高亮
+- **一键汇总多工作表**：上传含多个 sheet 的 Excel 时，自动合并为带 `sheet_name` 列的汇总表（同时保留原始 sheet），移动端默认使用汇总数据，避免遗漏。
+- **对话式连续分析**：多轮对话保持上下文，可在同一数据源上迭代指令、生成更多报表。
+- **快捷图表模板**：折线/柱状/堆叠/散点/雷达等模板一键填充，生成后可直接下载图片。
+- **数据工具条**：按列筛选/排序/Top-K、撤销与重做、导出预览 CSV、重置回原始数据。
+- **情景式提示**：发现空值、重复列或大表时自动弹出“清理/采样”建议。
+- **多端体验优化**：移动端输入区适配软键盘、底部 safe-area；桌面侧栏可折叠并记住状态；深浅色主题随时切换。
 
 ---
 
-## 技术栈
+## 快速开始
 
-- 前端：原生 HTML/CSS/JS（ES Modules），Vite 构建，ECharts，SheetJS（xlsx）
-- 后端：Netlify Functions（Node.js + openai SDK 指向 DeepSeek API）
-- 部署：Netlify（SPA 重写与 Functions 路由）、GitHub CI
+> 需要 Node.js ≥ 18（推荐 20 / 22）。
 
-目录结构（节选）：
+```bash
+npm install          # 安装依赖
+export DEEPSEEK_API_KEY="your-key"   # 或通过 .env / Netlify 环境变量配置
+npm run dev          # 启动开发服务器（Vite）
+
+# 构建生产包
+npm run build
+```
+
+开发服务器默认将 API 请求代理到 `/api/process`；若本地无函数代理，则回退至 `/.netlify/functions/process`。
+
+---
+
+## 部署说明（Netlify）
+
+- **Build command**：`npm run build`
+- **Publish directory**：`dist`
+- **Functions directory**：`api`
+- **环境变量**：`DEEPSEEK_API_KEY`
+- **路由重写**：确保 `public/_redirects` 或 `netlify.toml` 中包含
+    - `/*    /index.html   200`
+    - `/api/*    /.netlify/functions/:splat   200`
+
+部署完成后即可通过 Netlify Functions 调用 DeepSeek 模型生成表格和图表。
+
+---
+
+## 技术栈概览
+
+- 前端：原生 HTML / CSS / JS (ES Modules)、Vite、ECharts、SheetJS (xlsx)
+- 后端：Netlify Functions（Node.js + openai SDK 指向 DeepSeek）
+- 部署：Netlify + GitHub
 
 ```
 smartable-mvp/
 ├─ index.html
 ├─ style.css
 ├─ src/
-│  └─ main.js
+│  └─ main.js              # 前端交互逻辑（含多表汇总、移动端适配）
 ├─ api/
-│  └─ process.js           # Netlify Function（生成 CSV + 图表）
-├─ public/
-│  └─ _redirects           # SPA & Functions 路由
+│  └─ process.js           # Netlify Function（调用 DeepSeek 返回 CSV + 图表）
+├─ packages/
+│  └─ core/csv.js          # CSV 解析与序列化工具
+├─ public/_redirects
 ├─ netlify.toml
-├─ vite.config.js
-├─ package.json
 └─ README.md
 ```
 
 ---
 
-## 快速开始（本地）
+## API 概要
 
-前置：Node.js 18+（建议 20/22）。
-
-1) 安装依赖
-
-```bash
-npm install
-```
-
-2) 配置环境变量（用于后端函数调用 DeepSeek）
-
-- 在 Netlify 或本地环境设置 `DEEPSEEK_API_KEY`。
-
-3) 启动开发服务器
-
-```bash
-npm run dev
-```
-
-默认使用 Vite 本地预览；前端会将 API 请求发往 `/api/process`，若本地代理未命中会自动回退到 `/.netlify/functions/process`。
-
-4) 构建生产包
-
-```bash
-npm run build
-```
-
----
-
-## 部署（Netlify）
-
-- Build command: `npm run build`
-- Publish directory: `dist`
-- Functions directory: `api`
-- 环境变量：`DEEPSEEK_API_KEY`
-- 确保 `public/_redirects` 或 `netlify.toml` 中已配置：
-    - SPA 路由（将任意路径重写到 `/index.html`）
-    - API 路由（`/api/*` → `/.netlify/functions/:splat`）
-
----
-
-## API 契约（后端函数）
-
-POST `/api/process`（或 `/.netlify/functions/process`）
-
-请求体：
+POST `/api/process`
 
 ```json
 {
-    "command": "按地区统计销售额并画饼图",
-    "activeTableName": "样例-sales_weekly.csv",
+    "command": "按学院统计考场并生成柱状图",
+    "activeTableName": "排考 · 全部工作表",
     "workspace": {
-        "样例-sales_weekly.csv": {
+        "排考 · 全部工作表": {
             "currentData": "header,...",
             "originalData": "header,..."
         }
@@ -129,38 +102,36 @@ POST `/api/process`（或 `/.netlify/functions/process`）
 }
 ```
 
-响应体（JSON）：
+响应：
 
 ```json
 {
-    "result": "CSV 字符串（至少含表头）",
-    "chart": { "echartsOption": "..." } | null,
-    "targetTable": "写入的表名（默认 activeName）"
+    "result": "CSV 字符串（带表头）",
+    "chart": { "title": "...", "series": [...] } | null,
+    "targetTable": "写入数据源的名称"
 }
 ```
 
-后端限制：
-- 服务端超时保护（28s），超时返回 504
-- 返回 CSV 行数硬上限 200（不含表头）
+> 服务器端设有 28s 超时保护，并对 CSV 返回行数做 200 行上限裁剪，以保证响应稳定。
 
 ---
 
-## 隐私与安全
+## 隐私与使用建议
 
-- 你的数据仅在浏览器内存与本地存储中持久化会话，前端不会主动上报至第三方；
-- 当你发起分析请求时，当前工作区快照会随同指令发送至后端函数，再由后端调用 DeepSeek API 完成处理；
-- 请勿上传含有敏感个人信息或受监管数据；生产落地请审视合规要求并替换为企业私有化模型或网关。
+- 数据仅保留在浏览器内存与 LocalStorage 中，除非你发起分析请求，否则不会发送至后端。
+- 后端函数会把当前工作区快照转发至 DeepSeek API，请勿上传敏感、受监管或涉隐私的数据。
+- 若需生产级落地，请结合企业级网关或自建模型，并补强审计与权限控制。
 
 ---
 
 ## 许可证
 
-本仓库以 MIT 许可证开源，详见 `LICENSE`（如缺失可按 MIT 使用并保留版权声明）。
+MIT License（详见 `LICENSE`）。在保留版权声明的前提下可自由使用与改造。
 
 ---
 
 ## 致谢
 
-感谢 ECharts 与 SheetJS 项目的卓越工作，也感谢社区提供的使用反馈与建议。
+感谢 ECharts、SheetJS 以及 Netlify 社区的优秀开源生态，也感谢所有体验者的反馈，让智表持续进化。
 
-最后更新：2025-10-19
+最后更新：2025-10-20
