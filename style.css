@@ -1908,6 +1908,12 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 	/* 让消息气泡成为菜单定位容器 */
 	.message { position: relative; }
 
+	/* 移动端：AI结果摘要与内联操作 */
+	.msg-summary { margin: .25rem 0 .2rem; color: var(--text-muted); font-size: 13px; }
+	.msg-inline-actions { display: inline-flex; gap: .4rem; flex-wrap: wrap; }
+	.msg-inline-btn { border: 1px solid rgba(148,163,184,.28); background: rgba(248,250,252,.9); color: var(--accent-strong); padding: .35rem .6rem; border-radius: 999px; font-size: 13px; box-shadow: 0 6px 12px rgba(148,163,184,.18); }
+	body.dark-mode .msg-inline-btn { background: rgba(30,41,59,.92); border-color: rgba(148,163,184,.28); color: #c4b5fd; }
+
 	/* ‘⋯ 更多’ 触发按钮（移动端） */
 	.msg-more-btn {
 		position: absolute;

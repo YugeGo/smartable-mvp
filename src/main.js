@@ -237,11 +237,46 @@ function addMessage(sender, content, doSave = true) {
 			const tableContainer = document.createElement('div');
 			tableContainer.classList.add('table-wrapper');
 			if (isMobile) {
-				deferredContent = () => renderCsvAsTable(csvString, tableContainer);
+				// 移动端先展示摘要与内联操作，避免大表格撑爆屏幕；用户点“展开”再渲染表格
+				const summary = document.createElement('div');
+				summary.className = 'msg-summary';
+				try {
+					const aoa = parseCsvToAoA(csvString);
+					const rows = Math.max((aoa?.length || 1) - 1, 0);
+					const cols = Array.isArray(aoa?.[0]) ? aoa[0].length : 0;
+					summary.textContent = `表格结果 · ${cols} 列 · ${rows} 行`;
+				} catch (_) {
+					summary.textContent = '表格结果可展开查看';
+				}
+
+				const inlineActions = document.createElement('div');
+				inlineActions.className = 'msg-inline-actions';
+
+				const expandBtn = document.createElement('button');
+				expandBtn.type = 'button';
+				expandBtn.className = 'msg-inline-btn';
+				expandBtn.textContent = '⤵ 展开';
+				expandBtn.addEventListener('click', () => {
+					try { renderCsvAsTable(csvString, tableContainer); } catch (_) {}
+					inlineActions.remove();
+					summary.remove();
+				});
+
+				const dlBtn = document.createElement('button');
+				dlBtn.type = 'button';
+				dlBtn.className = 'msg-inline-btn';
+				dlBtn.textContent = '⬇ Excel';
+				dlBtn.addEventListener('click', () => downloadAsExcel(csvString));
+
+				inlineActions.appendChild(expandBtn);
+				inlineActions.appendChild(dlBtn);
+				messageBubble.appendChild(summary);
+				messageBubble.appendChild(inlineActions);
+				// 先不插入表容器，用户展开时再 append，避免空白占位
 			} else {
 				renderCsvAsTable(csvString, tableContainer);
+				messageBubble.appendChild(tableContainer);
 			}
-			messageBubble.appendChild(tableContainer);
 			rendered = true;
 		}
 
@@ -264,6 +299,16 @@ function addMessage(sender, content, doSave = true) {
 					if (prevDeferred) try { prevDeferred(); } catch (_) {}
 					renderChart(chartOption, chartContainer);
 				};
+				// 移动端为图表同样提供内联导出按钮，避免靠“⋯”才能发现
+				const inlineActions = document.createElement('div');
+				inlineActions.className = 'msg-inline-actions';
+				const exportImg = document.createElement('button');
+				exportImg.type = 'button';
+				exportImg.className = 'msg-inline-btn';
+				exportImg.textContent = '🖼 图片';
+				exportImg.addEventListener('click', () => exportChartImage(messageBubble));
+				inlineActions.appendChild(exportImg);
+				messageBubble.appendChild(inlineActions);
 			} else {
 				setTimeout(() => renderChart(chartOption, chartContainer), 0);
 			}
