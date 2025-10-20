@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>智表 · Mobile</title>
+  <script type="module" src="/apps/mobile/main.mobile.js"></script>
+</head>
+<body>
+  <!-- 纯聊天外壳：沿用现有 DOM，去除桌面侧栏结构 -->
+  <header id="mobile-topbar" class="mobile-topbar" aria-label="移动端导航">
+    <div class="mobile-brand"><span class="brand-name">新会话</span></div>
+    <div class="mobile-actions">
+      <button id="mobile-new-btn" class="mobile-icon-btn" type="button" aria-label="新会话">＋</button>
+      <button id="mobile-dark-toggle" class="mobile-icon-btn" type="button" aria-label="切换主题">🌙</button>
+    </div>
+  </header>
+
+  <main id="main-content">
+    <div id="chat-container">
+      <div id="top-loading-bar" aria-hidden="true"></div>
+      <div id="message-list"></div>
+      <div id="upload-status" aria-live="polite" role="status"></div>
+      <div id="input-area">
+        <button id="mobile-plus-btn" class="input-btn" aria-label="更多操作" title="更多">＋</button>
+        <div id="mobile-quick-actions" class="mobile-quick-actions" hidden aria-hidden="true" role="menu">
+          <button type="button" class="mobile-qa-item" data-act="upload" role="menuitem">📎 上传文件</button>
+          <button type="button" class="mobile-qa-item" data-act="paste" role="menuitem">📋 粘贴数据</button>
+          <button type="button" class="mobile-qa-item" data-act="new" role="menuitem">🔄 新会话</button>
+        </div>
+        <input type="file" id="file-upload-input" style="display: none;">
+        <textarea id="command-input" placeholder="请输入指令..."></textarea>
+        <button id="send-btn" class="input-btn">➢</button>
+      </div>
+    </div>
+  </main>
+</body>
+</html>

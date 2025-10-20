@@ -7,3 +7,18 @@
   # 使用 esbuild 打包以支持 ESM import/export 的函数源码
   node_bundler = "esbuild"
   external_node_modules = ["openai"]
+
+[[redirects]]
+  from = "/api/*"
+  to = "/.netlify/functions/:splat"
+  status = 200
+
+[[redirects]]
+  from = "/m/*"
+  to = "/mobile/index.html"
+  status = 200
+
+[[redirects]]
+  from = "/*"
+  to = "/index.html"
+  status = 200

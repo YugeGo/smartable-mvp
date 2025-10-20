@@ -1,4 +1,5 @@
 import { defineConfig } from 'vite';
+import { resolve } from 'path';
 
 export default defineConfig(() => {
   const noOptimize = process.env.VITE_NO_OPTIMIZE === '1';
@@ -23,9 +24,25 @@ export default defineConfig(() => {
         // interval: 100,
       },
     },
-    preview: {
-      port: 4173,
-    },
+    preview: { port: 4173 },
     logLevel: 'info',
+    build: {
+      rollupOptions: {
+        input: {
+          desktop: resolve(__dirname, 'index.html'),
+          mobile: resolve(__dirname, 'apps/mobile/index.html'),
+        },
+        output: {
+          // Put mobile assets under /mobile for neat redirects
+          assetFileNames: (assetInfo) => {
+            const name = assetInfo.name || '';
+            if (name.includes('apps/mobile') || name.startsWith('mobile')) {
+              return 'assets/[name]-[hash][extname]';
+            }
+            return 'assets/[name]-[hash][extname]';
+          },
+        }
+      }
+    }
   };
 });
