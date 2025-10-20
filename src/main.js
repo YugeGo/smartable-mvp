@@ -275,10 +275,8 @@ function addMessage(sender, content, doSave = true) {
 
 		let rendered = false;
 		const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-		let deferredContent = null;
 		const autoExpandPref = isMobile ? getAutoExpandPreference() : true;
 		let currentExpanded = autoExpandPref;
-		let tableMenuToggleItem = null;
 		let tableToggleBtn = null;
 		let tableContainer = null;
 		const setTableVisibility = (visible) => {
@@ -293,10 +291,27 @@ function addMessage(sender, content, doSave = true) {
 			if (tableToggleBtn) {
 				tableToggleBtn.textContent = nextVisible ? '⤴ 收起' : '⤵ 展开';
 			}
-			if (tableMenuToggleItem) {
-				tableMenuToggleItem.textContent = nextVisible ? '⤴ 收起结果' : '⤵ 展开结果';
-			}
 			return currentExpanded;
+		};
+		let chartContainer = null;
+		let chartToggleBtn = null;
+		let chartVisible = true;
+		const setChartVisibility = (visible, chartOptionRef) => {
+			if (!chartContainer) {
+				return chartVisible;
+			}
+			const nextVisible = typeof visible === 'boolean' ? visible : !chartVisible;
+			chartContainer.hidden = !nextVisible;
+			chartContainer.setAttribute('aria-hidden', String(!nextVisible));
+			chartContainer.classList.toggle('collapsed', !nextVisible);
+			chartVisible = nextVisible;
+			if (chartToggleBtn) {
+				chartToggleBtn.textContent = nextVisible ? '⤴ 收起图表' : '⤵ 展开图表';
+			}
+			if (nextVisible && chartOptionRef) {
+				setTimeout(() => renderChart(chartOptionRef, chartContainer), 0);
+			}
+			return chartVisible;
 		};
 
 		if (chartOption) {
@@ -358,7 +373,7 @@ function addMessage(sender, content, doSave = true) {
 
 		// 图表：同样按需渲染
 		if (chartOption) {
-			const chartContainer = document.createElement('div');
+			chartContainer = document.createElement('div');
 			chartContainer.classList.add('chart-container');
 			if (messageBubble.children.length > 0) {
 				chartContainer.style.marginTop = '1.25rem';
@@ -370,14 +385,17 @@ function addMessage(sender, content, doSave = true) {
 				console.error('Failed to cache chart option:', error);
 			}
 			if (isMobile) {
-				const prevDeferred = deferredContent;
-				deferredContent = () => {
-					if (prevDeferred) try { prevDeferred(); } catch (_) {}
-					renderChart(chartOption, chartContainer);
-				};
-				// 移动端为图表同样提供内联导出按钮，避免靠“⋯”才能发现
 				const inlineActions = document.createElement('div');
 				inlineActions.className = 'msg-inline-actions';
+				chartToggleBtn = document.createElement('button');
+				chartToggleBtn.type = 'button';
+				chartToggleBtn.className = 'msg-inline-btn';
+				chartToggleBtn.textContent = '⤴ 收起图表';
+				chartToggleBtn.addEventListener('click', () => {
+					setChartVisibility(!chartVisible, chartOption);
+				});
+				inlineActions.appendChild(chartToggleBtn);
+
 				const exportImg = document.createElement('button');
 				exportImg.type = 'button';
 				exportImg.className = 'msg-inline-btn';
@@ -385,6 +403,7 @@ function addMessage(sender, content, doSave = true) {
 				exportImg.addEventListener('click', () => exportChartImage(messageBubble));
 				inlineActions.appendChild(exportImg);
 				messageBubble.appendChild(inlineActions);
+				setChartVisibility(true, chartOption);
 			} else {
 				setTimeout(() => renderChart(chartOption, chartContainer), 0);
 			}
@@ -430,19 +449,11 @@ function addMessage(sender, content, doSave = true) {
 				it.textContent = label;
 				it.addEventListener('click', () => { try { onClick(); } finally { hideMenu(); } });
 				menu.appendChild(it);
-				return it;
 			};
 
 			if (csvString && csvString.trim() !== '') {
-				tableMenuToggleItem = addItem(currentExpanded ? '⤴ 收起结果' : '⤵ 展开结果', () => {
-					const next = setTableVisibility(!currentExpanded);
-					setAutoExpandPreference(next);
-				});
 				addItem('⬇ 下载Excel', () => downloadAsExcel(csvString));
 				addItem('📋 复制CSV', () => { try { navigator.clipboard.writeText(csvString); updateUploadStatus('已复制到剪贴板'); } catch (_) {} });
-			}
-			if (deferredContent) {
-				addItem('📊 展开图表', () => { try { deferredContent(); } catch (_) {} });
 			}
 			if (chartOption) {
 				addItem('🖼 下载图片', () => exportChartImage(messageBubble));
