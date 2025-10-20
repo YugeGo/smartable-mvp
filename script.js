@@ -335,9 +335,8 @@ async function handleSendMessage() {
                 : [];
 
             if (missingColumns.length > 0 && baselineSchema.length > 0) {
-                addMessage(
-                    'system',
-                    `检测到 ${destinationTableName} 的返回结果缺少列：${missingColumns.join(', ')}。已保持上一轮数据，请尝试更明确的指令或直接说明需要保留这些列。`
+                console.warn(
+                    `Result for ${destinationTableName} is missing columns: ${missingColumns.join(', ')}. Keeping previous dataset.`
                 );
             } else {
                 if (!destinationExists) {
@@ -935,10 +934,7 @@ function autoResizeChart(option, container) {
     }
 
     const seriesList = normalizeSeries(option.series);
-    if (seriesList.length === 0) {
-        container.style.height = '360px';
-        return;
-    }
+    const { viewportWidth, viewportHeight, containerWidth } = getViewportSize(container);
 
     const hasBarSeries = seriesList.some(series => (series.type || '').toLowerCase() === 'bar');
     const hasLineSeries = seriesList.some(series => (series.type || '').toLowerCase() === 'line');
@@ -957,7 +953,216 @@ function autoResizeChart(option, container) {
         targetHeight = Math.max(targetHeight, 360 + overflowCount * 16);
     }
 
-    container.style.height = `${Math.min(targetHeight, 960)}px`;
+    targetHeight = computeResponsiveChartHeight({
+        desiredHeight: targetHeight,
+        viewportHeight,
+        containerWidth,
+        seriesCount: seriesList.length
+    });
+
+    container.style.height = `${targetHeight}px`;
+    applyResponsiveChartTweaks(option, {
+        viewportWidth,
+        viewportHeight,
+        containerWidth,
+        seriesList
+    });
+}
+
+function getViewportSize(container) {
+    const docElement = document.documentElement || {};
+    const viewportWidth = Math.max(
+        window.innerWidth || 0,
+        docElement.clientWidth || 0,
+        container?.clientWidth || 0
+    ) || 1024;
+    const viewportHeight = Math.max(
+        window.innerHeight || 0,
+        docElement.clientHeight || 0,
+        container?.clientHeight || 0
+    ) || 720;
+
+    const parentWidth = container?.parentElement?.clientWidth || 0;
+    const containerWidth = Math.max(container?.clientWidth || 0, parentWidth, viewportWidth * 0.7);
+
+    return { viewportWidth, viewportHeight, containerWidth };
+}
+
+function computeResponsiveChartHeight({ desiredHeight, viewportHeight, containerWidth, seriesCount }) {
+    const safeViewport = Number.isFinite(viewportHeight) && viewportHeight > 0 ? viewportHeight : 720;
+    const safeWidth = Number.isFinite(containerWidth) && containerWidth > 0 ? containerWidth : 1024;
+
+    let target = Number.isFinite(desiredHeight) && desiredHeight > 0 ? desiredHeight : 360;
+
+    if (safeWidth < 480) {
+        target *= 0.86;
+    } else if (safeWidth < 640) {
+        target *= 0.92;
+    } else if (safeWidth > 1365) {
+        target *= Math.min(1.2, safeWidth / 1365);
+    }
+
+    const maxHeight = Math.max(260, safeViewport - 112);
+    const minHeight = seriesCount > 0 ? 240 : 220;
+
+    if (target < minHeight) {
+        target = minHeight;
+    }
+
+    return Math.round(Math.min(target, Math.max(maxHeight, minHeight)));
+}
+
+function applyResponsiveChartTweaks(option, metrics) {
+    if (!option) {
+        return;
+    }
+
+    const { containerWidth, seriesList } = metrics;
+    const compactWidth = containerWidth < 768;
+    const narrowWidth = containerWidth < 560;
+    const crampedWidth = containerWidth < 420;
+    const spaciousWidth = containerWidth > 1280;
+
+    const grids = normalizeObjectCollection(option.grid);
+    if (grids.length === 0) {
+        grids.push({});
+    }
+
+    grids.forEach(grid => {
+        if (!grid || typeof grid !== 'object') {
+            return;
+        }
+
+        if (compactWidth) {
+            if (grid.left === undefined) {
+                grid.left = narrowWidth ? 12 : 18;
+            }
+            if (grid.right === undefined) {
+                grid.right = narrowWidth ? 12 : 18;
+            }
+            if (grid.top === undefined) {
+                grid.top = 40;
+            }
+            if (grid.bottom === undefined) {
+                grid.bottom = crampedWidth ? 52 : 46;
+            }
+        } else if (spaciousWidth) {
+            if (grid.left === undefined) {
+                grid.left = 64;
+            }
+            if (grid.right === undefined) {
+                grid.right = 40;
+            }
+        }
+    });
+
+    option.grid = Array.isArray(option.grid) ? grids : grids[0];
+
+    const adjustAxis = (axis, isYAxis = false) => {
+        if (!axis || typeof axis !== 'object') {
+            return;
+        }
+
+        const axisLabel = {
+            ...(axis.axisLabel || {})
+        };
+
+        if (compactWidth) {
+            if (axisLabel.fontSize === undefined) {
+                axisLabel.fontSize = crampedWidth ? 10 : 11;
+            }
+            if (axisLabel.margin === undefined) {
+                axisLabel.margin = crampedWidth ? 6 : 8;
+            }
+            axisLabel.hideOverlap = true;
+
+            if (!isYAxis && crampedWidth && axisLabel.rotate === undefined) {
+                axisLabel.rotate = 25;
+            }
+        } else if (spaciousWidth && axisLabel.fontSize === undefined) {
+            axisLabel.fontSize = 13;
+        }
+
+        axis.axisLabel = axisLabel;
+
+        const nameTextStyle = {
+            ...(axis.nameTextStyle || {})
+        };
+
+        if (nameTextStyle.fontSize === undefined) {
+            nameTextStyle.fontSize = compactWidth ? (crampedWidth ? 11 : 12) : spaciousWidth ? 13 : nameTextStyle.fontSize;
+        }
+
+        axis.nameTextStyle = nameTextStyle;
+    };
+
+    const xAxes = normalizeObjectCollection(option.xAxis);
+    if (xAxes.length > 0) {
+        xAxes.forEach(axis => adjustAxis(axis, false));
+        option.xAxis = Array.isArray(option.xAxis) ? xAxes : xAxes[0];
+    }
+
+    const yAxes = normalizeObjectCollection(option.yAxis);
+    if (yAxes.length > 0) {
+        yAxes.forEach(axis => adjustAxis(axis, true));
+        option.yAxis = Array.isArray(option.yAxis) ? yAxes : yAxes[0];
+    }
+
+    if (seriesList.length > 0) {
+        seriesList.forEach(series => {
+            if (!series || typeof series !== 'object') {
+                return;
+            }
+
+            const type = (series.type || '').toLowerCase();
+            if (type === 'bar') {
+                if (compactWidth) {
+                    series.barCategoryGap = crampedWidth ? '55%' : '45%';
+                    series.barGap = crampedWidth ? '35%' : '28%';
+                    series.barMaxWidth = crampedWidth ? 32 : 40;
+                } else if (spaciousWidth) {
+                    series.barCategoryGap = series.barCategoryGap || '28%';
+                    series.barGap = series.barGap || '12%';
+                    if (series.barMaxWidth === undefined) {
+                        series.barMaxWidth = 56;
+                    }
+                }
+            } else if (type === 'line' && compactWidth) {
+                if (series.symbolSize === undefined || series.symbolSize > 10) {
+                    series.symbolSize = crampedWidth ? 5 : 6;
+                }
+            }
+        });
+
+        option.series = Array.isArray(option.series) ? seriesList : seriesList[0];
+    }
+
+    const legendList = normalizeObjectCollection(option.legend);
+    if (legendList.length > 0) {
+        legendList.forEach(legend => {
+            if (!legend || typeof legend !== 'object') {
+                return;
+            }
+
+            if (compactWidth) {
+                if (legend.top === undefined) {
+                    legend.top = 8;
+                }
+                if (legend.orient === undefined) {
+                    legend.orient = 'horizontal';
+                }
+                legend.itemWidth = legend.itemWidth || (crampedWidth ? 10 : 12);
+                legend.itemHeight = legend.itemHeight || (crampedWidth ? 10 : 12);
+                legend.padding = legend.padding || [6, 8];
+                legend.textStyle = {
+                    ...(legend.textStyle || {}),
+                    fontSize: legend.textStyle?.fontSize || (crampedWidth ? 10 : 11)
+                };
+            }
+        });
+
+        option.legend = Array.isArray(option.legend) ? legendList : legendList[0];
+    }
 }
 
 function normalizeSeries(seriesCandidate) {
