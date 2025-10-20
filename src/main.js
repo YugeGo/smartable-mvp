@@ -70,6 +70,7 @@ const mobileTopbar = document.getElementById('mobile-topbar');
 const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
 const mobileBackdrop = document.getElementById('mobile-backdrop');
 const mobileDarkToggle = document.getElementById('mobile-dark-toggle');
+const mobileNewBtn = document.getElementById('mobile-new-btn');
 const chartShortcutsSection = document.getElementById('chart-shortcuts');
 const chartShortcutList = document.getElementById('chart-shortcut-list');
 const templateSelect = document.getElementById('template-select');
@@ -614,6 +615,12 @@ if (newSessionBtn) {
 			localStorage.removeItem(STORAGE_KEYS.session);
 			window.location.reload();
 		}
+	});
+}
+
+if (mobileNewBtn) {
+	mobileNewBtn.addEventListener('click', () => {
+		if (newSessionBtn) newSessionBtn.click();
 	});
 }
 
