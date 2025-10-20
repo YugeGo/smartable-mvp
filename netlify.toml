@@ -14,11 +14,6 @@
   status = 200
 
 [[redirects]]
-  from = "/m/*"
-  to = "/apps/mobile/index.html"
-  status = 200
-
-[[redirects]]
   from = "/*"
   to = "/index.html"
   status = 200

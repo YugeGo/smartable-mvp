@@ -3,11 +3,34 @@
 import '../apps/shared/initPlatform.js';
 import '../style.css';
 import '../themes/lobe.css';
+import { injectMobileUI } from './mobile-ui.js';
 import { parseCsvToAoA, unparseAoAToCsv } from '../packages/core/csv.js';
 import { getEcharts, getXLSX } from '../packages/core/charts.js';
 import { callProcessApi } from '../packages/core/api.js';
 
 // --- 以下为原 script.js 逻辑（已直接内联到模块中） ---
+
+const shouldInjectMobileShell = (() => {
+	try {
+		const params = new URLSearchParams(window.location.search || '');
+		const forcedDesktop = params.get('desktop') === '1'
+			|| params.get('force-desktop') === '1'
+			|| params.get('no-mobile') === '1';
+		if (forcedDesktop) {
+			return false;
+		}
+	} catch (_) {
+		// ignore parsing failure
+	}
+	if (!window.matchMedia) {
+		return false;
+	}
+	return window.matchMedia('(max-width: 768px)').matches;
+})();
+
+if (shouldInjectMobileShell) {
+	injectMobileUI();
+}
 
 // --- 1. DOM Element References ---
 const messageList = document.getElementById('message-list');
@@ -670,18 +693,11 @@ if (dataPasteClose) {
 }
 
 if (newSessionBtn) {
-	newSessionBtn.addEventListener('click', () => {
-		if (confirm('确定要开始一个新会话吗？当前所有数据和对话历史都将被清除。')) {
-			localStorage.removeItem(STORAGE_KEYS.session);
-			window.location.reload();
-		}
-	});
+	newSessionBtn.addEventListener('click', confirmAndResetSession);
 }
 
 if (mobileNewBtn) {
-	mobileNewBtn.addEventListener('click', () => {
-		if (newSessionBtn) newSessionBtn.click();
-	});
+	mobileNewBtn.addEventListener('click', confirmAndResetSession);
 }
 
 // 移动端输入区“更多”菜单
@@ -705,8 +721,10 @@ if (mobilePlusBtn && mobileQuickActions) {
 			else if (fileUploadInput) fileUploadInput.click();
 		} else if (act === 'paste') {
 			if (pasteBtn) pasteBtn.click();
+			else openDataInputPanel();
 		} else if (act === 'new') {
 			if (newSessionBtn) newSessionBtn.click();
+			else confirmAndResetSession();
 		}
 		mobileQuickActions.setAttribute('hidden', '');
 		mobileQuickActions.setAttribute('aria-hidden', 'true');
@@ -719,6 +737,14 @@ if (mobilePlusBtn && mobileQuickActions) {
 			}
 		}
 	});
+}
+
+function confirmAndResetSession() {
+	if (!window.confirm('确定要开始一个新会话吗？当前所有数据和对话历史都将被清除。')) {
+		return;
+	}
+	localStorage.removeItem(STORAGE_KEYS.session);
+	window.location.reload();
 }
 
 document.addEventListener('keydown', event => {
@@ -1903,31 +1929,32 @@ function initializeThemeControls() {
 	applyDarkMode(isDarkMode);
 
 	if (darkModeToggle) {
-		darkModeToggle.addEventListener('click', () => {
-			isDarkMode = !isDarkMode;
-			localStorage.setItem(STORAGE_KEYS.darkMode, String(isDarkMode));
-			applyDarkMode(isDarkMode);
-			rerenderAllCharts();
-		});
+		darkModeToggle.addEventListener('click', toggleDarkModePreference);
 	}
 	if (mobileDarkToggle) {
-		mobileDarkToggle.addEventListener('click', () => {
-			if (darkModeToggle) darkModeToggle.click();
-		});
+		mobileDarkToggle.addEventListener('click', toggleDarkModePreference);
 	}
 }
 
 function initializeStyleControls() {
 	const saved = localStorage.getItem(STORAGE_KEYS.appStyle) || 'default';
 	applyAppStyle(saved);
-	const handler = () => {
-		const current = document.body.classList.contains('theme-lobe') ? 'lobe' : 'default';
-		const next = current === 'default' ? 'lobe' : 'default';
-		applyAppStyle(next);
-		localStorage.setItem(STORAGE_KEYS.appStyle, next);
-	};
-	if (styleToggle) styleToggle.addEventListener('click', handler);
-	if (mobileStyleToggle) mobileStyleToggle.addEventListener('click', handler);
+	if (styleToggle) styleToggle.addEventListener('click', toggleAppStylePreference);
+	if (mobileStyleToggle) mobileStyleToggle.addEventListener('click', toggleAppStylePreference);
+}
+
+function toggleDarkModePreference() {
+	isDarkMode = !isDarkMode;
+	localStorage.setItem(STORAGE_KEYS.darkMode, String(isDarkMode));
+	applyDarkMode(isDarkMode);
+	rerenderAllCharts();
+}
+
+function toggleAppStylePreference() {
+	const current = document.body.classList.contains('theme-lobe') ? 'lobe' : 'default';
+	const next = current === 'default' ? 'lobe' : 'default';
+	applyAppStyle(next);
+	localStorage.setItem(STORAGE_KEYS.appStyle, next);
 }
 
 function applyAppStyle(name) {
@@ -2000,11 +2027,11 @@ function initializeMobileHeaderActions() {
 		const toggleDark = document.createElement('button');
 		toggleDark.className = 'msg-menu-item';
 		toggleDark.textContent = '🌙 深色模式';
-		toggleDark.addEventListener('click', () => { if (darkModeToggle) darkModeToggle.click(); hide(); });
+		toggleDark.addEventListener('click', () => { toggleDarkModePreference(); hide(); });
 		const toggleStyle = document.createElement('button');
 		toggleStyle.className = 'msg-menu-item';
 		toggleStyle.textContent = '🎨 风格切换';
-		toggleStyle.addEventListener('click', () => { const btn = mobileStyleToggle || styleToggle; if (btn) btn.click(); hide(); });
+		toggleStyle.addEventListener('click', () => { toggleAppStylePreference(); hide(); });
 		menu.appendChild(toggleDark);
 		menu.appendChild(toggleStyle);
 		mobileTopbar.appendChild(menu);

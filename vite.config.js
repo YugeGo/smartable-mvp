@@ -29,18 +29,10 @@ export default defineConfig(() => {
     build: {
       rollupOptions: {
         input: {
-          desktop: resolve(__dirname, 'index.html'),
-          mobile: resolve(__dirname, 'apps/mobile/index.html'),
+          main: resolve(__dirname, 'index.html')
         },
         output: {
-          // Put mobile assets under /mobile for neat redirects
-          assetFileNames: (assetInfo) => {
-            const name = assetInfo.name || '';
-            if (name.includes('apps/mobile') || name.startsWith('mobile')) {
-              return 'assets/[name]-[hash][extname]';
-            }
-            return 'assets/[name]-[hash][extname]';
-          },
+          assetFileNames: 'assets/[name]-[hash][extname]'
         }
       }
     }

@@ -1,12 +1,4 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>智表 · Mobile</title>
-  <script type="module" src="/apps/mobile/main.mobile.js"></script>
-</head>
-<body>
+const mobileShellHTML = `
   <!-- 纯聊天外壳：沿用现有 DOM，去除桌面侧栏结构 -->
   <header id="mobile-topbar" class="mobile-topbar" aria-label="移动端导航">
     <button type="button" id="mobile-menu-toggle" class="mobile-icon-btn" aria-label="打开侧边栏" title="侧边栏">➜</button>
@@ -50,11 +42,15 @@
           <button type="button" class="mobile-qa-item" data-act="paste" role="menuitem">📋 粘贴数据</button>
           <button type="button" class="mobile-qa-item" data-act="new" role="menuitem">🔄 新会话</button>
         </div>
-  <input type="file" id="file-upload-input" style="display: none;" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        <input type="file" id="file-upload-input" style="display: none;" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
         <textarea id="command-input" placeholder="请输入指令..."></textarea>
         <button id="send-btn" class="input-btn">➢</button>
       </div>
     </div>
   </main>
-</body>
-</html>
+`;
+
+export function injectMobileUI() {
+    // 清空 body 并注入移动端 UI
+    document.body.innerHTML = mobileShellHTML;
+}

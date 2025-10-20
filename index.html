@@ -5,37 +5,9 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>智表 (Smartable) - AI表格助手 MVP</title>
     <!-- 使用 Vite/模块化入口（CSS 由 src/main.js 引入） -->
-        <script>
-            (function () {
-                try {
-                    var params = new URLSearchParams(location.search || '');
-                    if (params.get('no-redirect') === '1') return; // 手动禁用
-                    var path = (location.pathname || '/').replace(/\/+$/, '');
-                    var isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-                    if (!isMobile) return; // 仅在移动端跳转
-                    // 已在移动入口则不再跳
-                    if (path.startsWith('/m') || path.startsWith('/apps/mobile')) return;
-                    var isLocal = /^(localhost|127\.0\.0\.1)$/.test(location.hostname || '');
-                    var target = isLocal ? '/apps/mobile/' : '/m/';
-                    location.replace(target);
-                } catch (e) { /* no-op */ }
-            })();
-        </script>
     <script type="module" src="/src/main.js"></script>
 </head>
 <body>
-    <!-- 移动端顶部栏（桌面端隐藏） -->
-    <header id="mobile-topbar" class="mobile-topbar" aria-label="移动端导航" hidden>
-        <button type="button" id="mobile-menu-toggle" class="mobile-icon-btn" aria-label="打开侧边栏">☰</button>
-        <div class="mobile-brand" aria-live="polite">
-            <span class="brand-name">新会话</span>
-        </div>
-        <div class="mobile-actions">
-            <button id="mobile-new-btn" class="mobile-icon-btn" type="button" aria-label="新会话">＋</button>
-            <button id="mobile-dark-toggle" class="mobile-icon-btn" type="button" aria-label="切换深浅色">🌙</button>
-            <button id="mobile-style-toggle" class="mobile-icon-btn" type="button" aria-label="切换风格" title="切换风格">🎨</button>
-        </div>
-    </header>
     <aside id="sidebar">
         <div class="sidebar-header">
             <div class="brand">
@@ -246,12 +218,6 @@
                 <button type="button" class="input-prompt-chip" data-fill="请清洗空值与异常值，保留原列名并输出清洗后的表格">🧹 清洗空值</button>
             </div>
             <div id="input-area">
-                <button id="mobile-plus-btn" class="input-btn" aria-label="更多操作" title="更多">＋</button>
-                <div id="mobile-quick-actions" class="mobile-quick-actions" hidden aria-hidden="true" role="menu">
-                    <button type="button" class="mobile-qa-item" data-act="upload" role="menuitem">📎 上传文件</button>
-                    <button type="button" class="mobile-qa-item" data-act="paste" role="menuitem">📋 粘贴数据</button>
-                    <button type="button" class="mobile-qa-item" data-act="new" role="menuitem">🔄 新会话</button>
-                </div>
                 <button id="new-session-btn" class="input-btn" aria-label="新会话">🔄</button>
                 <button id="upload-btn" class="input-btn">📎</button>
                 <input type="file" id="file-upload-input" style="display: none;" accept=".csv,.xlsx,.xls,text/csv,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
@@ -262,8 +228,6 @@
             </div>
         </div>
     </main>
-    <!-- 移动端抽屉幕布 -->
-    <div id="mobile-backdrop" class="mobile-backdrop" hidden aria-hidden="true"></div>
     <!-- 引导覆盖层 -->
     <div id="guide-overlay" class="guide-overlay" hidden aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="guide-title">
         <div class="guide-backdrop" aria-hidden="true"></div>
