@@ -1693,6 +1693,7 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 	border-bottom-color: rgba(191, 219, 254, 0.9);
 }
 
+/* 移动端规则（视口 <= 768px）。后续将逐步迁移为 .is-mobile 命名空间以彻底隔离。*/
 @media (max-width: 768px) {
 	/* 欢迎页（移动端） */
 	/* 简化：移动端不再显示欢迎页 */

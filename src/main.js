@@ -1,4 +1,6 @@
 // src/main.js - V1.6.0 (Vite Migration)
+// 平台标记：根据视口打 `.is-mobile/.is-desktop`，用于样式隔离
+import '../apps/shared/initPlatform.js';
 import '../style.css';
 import Papa from 'papaparse';
 
