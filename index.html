@@ -28,6 +28,20 @@
             </div>
         </div>
         <div class="sidebar-scroll">
+            <section id="conversation-list" class="sidebar-section" aria-label="会话列表">
+                <header class="sidebar-section-header">
+                    <h2>会话</h2>
+                    <button type="button" class="section-toggle" data-target="conversation-list">▾</button>
+                </header>
+                <div class="section-body">
+                    <ul id="conv-items" class="conv-items" role="list">
+                        <li class="conv-item active" role="listitem" aria-current="true">当前会话</li>
+                    </ul>
+                    <div class="conv-actions">
+                        <button type="button" id="conv-new" class="chart-suggestion-btn">新建会话</button>
+                    </div>
+                </div>
+            </section>
             <section id="product-intro" class="sidebar-section" aria-label="产品介绍">
                 <header class="sidebar-section-header">
                     <h2>能帮你做什么？</h2>
@@ -209,6 +223,7 @@
                 </div>
             </section>
             <div id="upload-status" aria-live="polite" role="status"></div>
+            <div id="input-hint" class="input-hint" aria-hidden="true">按 Enter 发送 · Shift + Enter 换行</div>
             <div id="input-prompts" class="input-prompts" aria-label="快捷提示" role="list">
                 <button type="button" class="input-prompt-chip" data-fill="请生成一份趋势折线图，自动选择横轴与关键指标，并返回CSV与ECharts配置">📈 趋势图</button>
                 <button type="button" class="input-prompt-chip" data-fill="请对当前数据做Top-10汇总，仅返回包含前10条的表格，并保持原有列名不变">🔟 Top-10汇总</button>

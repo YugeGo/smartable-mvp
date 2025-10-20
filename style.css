@@ -1896,7 +1896,7 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 
 	/* 移动端输入区“更多”菜单 */
 	.mobile-quick-actions[hidden] { display: none; }
-	.mobile-quick-actions { position: fixed; right: 16px; bottom: calc(130px + env(safe-area-inset-bottom, 0px)); min-width: 180px; background: #ffffff; border: 1px solid rgba(148,163,184,.3); border-radius: 14px; box-shadow: 0 16px 28px rgba(15,23,42,.25); padding: .5rem; display: flex; flex-direction: column; gap: .3rem; z-index: 7; }
+	.mobile-quick-actions { position: fixed; right: 16px; bottom: calc(130px + env(safe-area-inset-bottom, 0px)); min-width: 180px; background: #ffffff; border: 1px solid rgba(148,163,184,.3); border-radius: 14px; box-shadow: 0 16px 28px rgba(15,23,42,.25); padding: .5rem; display: flex; flex-direction: column; gap: .3rem; z-index: 7; opacity: 1; transform: translateY(0); transition: opacity .18s ease, transform .18s ease; }
 	body.dark-mode .mobile-quick-actions { background: #0f172a; border-color: rgba(148,163,184,.28); }
 	.mobile-qa-item { text-align: left; border-radius: 12px; border: 1px solid rgba(148,163,184,.28); background: transparent; color: var(--text-primary); padding: .6rem .8rem; }
 	.mobile-qa-item:active, .mobile-qa-item:hover { background: rgba(219,234,254,.9); border-color: rgba(37,99,235,.35); }
@@ -1945,8 +1945,22 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 		flex-direction: column;
 		gap: .25rem;
 		z-index: 3;
+	    opacity: 1;
+	    transform: translateY(0);
+	    transition: opacity .18s ease, transform .18s ease;
 	}
 	body.dark-mode .msg-menu { background: #0f172a; border-color: rgba(148,163,184,.28); }
+/* 会话列表（桌面侧栏） */
+.conv-items { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: .35rem; }
+.conv-item { padding: .45rem .65rem; border-radius: 10px; border: 1px solid transparent; cursor: pointer; color: var(--text-primary); }
+.conv-item:hover { background: rgba(15,23,42,.05); }
+.conv-item.active { background: rgba(219,234,254,.65); border-color: rgba(37,99,235,.28); }
+body.dark-mode .conv-item:hover { background: rgba(37,99,235,.18); }
+.conv-actions { margin-top: .5rem; display: flex; }
+
+/* 输入键位提示 */
+.input-hint { margin: .25rem 0 .25rem; color: var(--text-muted); font-size: 12px; }
+@media (max-width: 768px) { .input-hint { display: none; } }
 	.msg-menu-item {
 		text-align: left;
 		border-radius: 12px;
