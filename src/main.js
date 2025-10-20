@@ -676,36 +676,65 @@ async function handleFileSelect(event) {
 		const XLSX = await getXLSX();
 		const data = await file.arrayBuffer();
 		const workbook = XLSX.read(data, { type: 'array' });
-		const firstSheetName = workbook.SheetNames[0];
-		const worksheet = workbook.Sheets[firstSheetName];
+		const takenNames = new Set(Object.keys(workspace));
+		const importedSheets = [];
 
-		const rawCsvString = XLSX.utils.sheet_to_csv(worksheet);
-		// 使用 Papa 解析为 AoA 并标准化为 CSV 字符串
-		const aoa = parseCsvToAoA(rawCsvString);
-		const finalCsvString = unparseAoAToCsv(aoa);
+		workbook.SheetNames.forEach(sheetName => {
+			const worksheet = workbook.Sheets[sheetName];
+			if (!worksheet) {
+				return;
+			}
 
-		if (!finalCsvString || finalCsvString.trim() === '') {
-			throw new Error('Empty dataset after sanitizing');
+			const rawCsvString = XLSX.utils.sheet_to_csv(worksheet);
+			if (!rawCsvString || rawCsvString.trim() === '') {
+				return;
+			}
+
+			const aoa = parseCsvToAoA(rawCsvString);
+			const finalCsvString = unparseAoAToCsv(aoa);
+			if (!finalCsvString || finalCsvString.trim() === '') {
+				return;
+			}
+
+			const headers = extractHeaders(finalCsvString);
+			if (headers.length === 0) {
+				return;
+			}
+
+			const rowCount = Math.max(aoa.length - 1, 0);
+			const candidateName = buildSheetTableName(file.name, sheetName);
+			const tableName = resolveUniqueTableName(candidateName, takenNames);
+
+			importedSheets.push({
+				tableName,
+				sheetName: (sheetName || '').trim() || 'Sheet1',
+				headers,
+				rowCount,
+				csv: finalCsvString
+			});
+		});
+
+		if (importedSheets.length === 0) {
+			throw new Error('No usable sheets found in workbook');
 		}
 
-		const headers = extractHeaders(finalCsvString);
-		if (headers.length === 0) {
-			throw new Error('Missing header row');
-		}
+		importedSheets.forEach(entry => {
+			workspace[entry.tableName] = {
+				originalData: entry.csv,
+				currentData: entry.csv
+			};
+		});
 
-		const totalAoa = parseCsvToAoA(finalCsvString);
-		const rowCount = Math.max(totalAoa.length - 1, 0);
-		const tableName = file.name;
-
-		workspace[tableName] = {
-			originalData: finalCsvString,
-			currentData: finalCsvString
-		};
 		messages = []; // Reset history on new upload
-		setActiveTable(tableName);
-		addMessage('system', `文件 ${tableName} 上传成功，数据已准备就绪。`);
-		updateUploadStatus(`✅ ${tableName} · ${formatFileSize(file.size)} · ${headers.length} 列 · ${rowCount} 行`, 'success');
-		showChartPrompt('upload', tableName);
+		const primaryTable = importedSheets[0];
+		setActiveTable(primaryTable.tableName);
+
+		const sheetSummary = formatSheetPreview(importedSheets);
+		addMessage('system', `文件 ${file.name} 上传成功，共导入 ${importedSheets.length} 个工作表：${sheetSummary}。`);
+
+		const statusText = buildUploadStatusText(file, importedSheets);
+		updateUploadStatus(statusText, 'success');
+		showChartPrompt('upload', primaryTable.tableName);
 	} catch (error) {
 		console.error('Failed to process file:', error);
 		updateUploadStatus(`⚠️ ${file.name} 读取失败，请确保文件格式正确。`, 'error');
@@ -1190,6 +1219,56 @@ function formatFileSize(bytes) {
 	}
 
 	return `${(bytes / 1048576).toFixed(1)} MB`;
+}
+
+function buildSheetTableName(fileName, sheetName) {
+	const base = (fileName || '工作簿').trim().replace(/\s+/g, ' ');
+	const sheet = (sheetName || 'Sheet1').trim().replace(/\s+/g, ' ');
+	if (!sheet) {
+		return base;
+	}
+	return `${base} · ${sheet}`;
+}
+
+function resolveUniqueTableName(candidateName, takenNames) {
+	let uniqueName = candidateName;
+	let counter = 2;
+	while (takenNames.has(uniqueName)) {
+		uniqueName = `${candidateName} (${counter})`;
+		counter += 1;
+	}
+	takenNames.add(uniqueName);
+	return uniqueName;
+}
+
+function formatSheetPreview(entries, limit = 3) {
+	if (!Array.isArray(entries) || entries.length === 0) {
+		return '无可用工作表';
+	}
+
+	const preview = entries.slice(0, limit).map(entry => {
+		const columnLabel = `${entry.headers.length} 列`;
+		const rowLabel = `${entry.rowCount} 行`;
+		return `${entry.sheetName} (${columnLabel} · ${rowLabel})`;
+	});
+
+	if (entries.length > limit) {
+		preview.push(`... 另有 ${entries.length - limit} 个`);
+	}
+
+	return preview.join('，');
+}
+
+function buildUploadStatusText(file, entries) {
+	const sizeLabel = formatFileSize(file?.size);
+	const parts = [`✅ ${file?.name || '文件'}`];
+	if (sizeLabel) {
+		parts.push(sizeLabel);
+	}
+	parts.push(`导入 ${entries.length} 个工作表`);
+	const base = parts.join(' · ');
+	const preview = formatSheetPreview(entries);
+	return preview ? `${base}：${preview}` : base;
 }
 
 function initializeOnboarding() {
