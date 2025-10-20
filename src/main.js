@@ -585,8 +585,13 @@ commandInput.addEventListener('keydown', event => {
 	}
 });
 
-uploadBtn.addEventListener('click', () => fileUploadInput.click());
-fileUploadInput.addEventListener('change', handleFileSelect);
+// 桌面端存在 #upload-btn；移动端没有该按钮，需做防御性绑定，避免空指针导致整段脚本中断
+if (uploadBtn && fileUploadInput) {
+	uploadBtn.addEventListener('click', () => fileUploadInput.click());
+}
+if (fileUploadInput) {
+	fileUploadInput.addEventListener('change', handleFileSelect);
+}
 
 if (pasteBtn && dataInputPanel) {
 	pasteBtn.addEventListener('click', () => {
