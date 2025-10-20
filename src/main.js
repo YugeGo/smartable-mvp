@@ -2,6 +2,7 @@
 // 平台标记：根据视口打 `.is-mobile/.is-desktop`，用于样式隔离
 import '../apps/shared/initPlatform.js';
 import '../style.css';
+import '../themes/lobe.css';
 import { parseCsvToAoA, unparseAoAToCsv } from '../packages/core/csv.js';
 import { getEcharts, getXLSX } from '../packages/core/charts.js';
 import { callProcessApi } from '../packages/core/api.js';
@@ -52,6 +53,8 @@ const dtExportCsv = document.getElementById('dt-export-csv');
 const dtReset = document.getElementById('dt-reset');
 const dtHint = document.getElementById('dt-hint');
 const darkModeToggle = document.getElementById('dark-mode-toggle');
+const styleToggle = document.getElementById('style-toggle');
+const mobileStyleToggle = document.getElementById('mobile-style-toggle');
 const mobileTopbar = document.getElementById('mobile-topbar');
 const mobileMenuToggle = document.getElementById('mobile-menu-toggle');
 const mobileBackdrop = document.getElementById('mobile-backdrop');
@@ -78,6 +81,7 @@ const STORAGE_KEYS = {
 	bannerDismissed: 'smartable:banner-dismissed',
 	session: 'smartable:session',
 	darkMode: 'smartable:dark-mode',
+	appStyle: 'smartable:style',
 	toolCollapsed: 'smartable:tool-collapsed',
 	sectionCollapsed: 'smartable:section-collapsed'
 };
@@ -689,6 +693,7 @@ document.addEventListener('keydown', event => {
 });
 
 initializeThemeControls();
+initializeStyleControls();
 initializeChartShortcuts();
 initializeOnboarding();
 initializeGuide();
@@ -1797,6 +1802,23 @@ function initializeThemeControls() {
 			if (darkModeToggle) darkModeToggle.click();
 		});
 	}
+}
+
+function initializeStyleControls() {
+	const saved = localStorage.getItem(STORAGE_KEYS.appStyle) || 'default';
+	applyAppStyle(saved);
+	const handler = () => {
+		const current = document.body.classList.contains('theme-lobe') ? 'lobe' : 'default';
+		const next = current === 'default' ? 'lobe' : 'default';
+		applyAppStyle(next);
+		localStorage.setItem(STORAGE_KEYS.appStyle, next);
+	};
+	if (styleToggle) styleToggle.addEventListener('click', handler);
+	if (mobileStyleToggle) mobileStyleToggle.addEventListener('click', handler);
+}
+
+function applyAppStyle(name) {
+	document.body.classList.toggle('theme-lobe', name === 'lobe');
 }
 
 // --- 移动端抽屉与顶部栏 ---

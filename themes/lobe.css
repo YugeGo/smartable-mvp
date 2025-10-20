@@ -1,0 +1,131 @@
+/* Lobe-style inspired theme (scoped under .theme-lobe) */
+
+/* Theme variables override */
+.theme-lobe {
+  --accent: #7c3aed;           /* violet-600 */
+  --accent-strong: #6d28d9;    /* violet-700 */
+  --accent-soft: rgba(124, 58, 237, 0.14);
+  --text-primary: #0f172a;
+  --text-muted: rgba(71, 85, 105, 0.75);
+  --glass-surface: rgba(255, 255, 255, 0.9);
+  --glass-border: rgba(148, 163, 184, 0.28);
+  --surface-elevated: rgba(249, 250, 251, 0.95);
+}
+
+body.theme-lobe.dark-mode {
+  --text-primary: #e5e7eb;
+  --text-muted: rgba(148, 163, 184, 0.78);
+  --glass-surface: rgba(17, 24, 39, 0.82);
+  --surface-elevated: rgba(30, 41, 59, 0.9);
+}
+
+/* Background: subtle angled gradient */
+body.theme-lobe {
+  background: radial-gradient(1200px 600px at 85% -10%, rgba(124,58,237,0.12), transparent 60%),
+              radial-gradient(900px 500px at 0% 100%, rgba(59,130,246,0.10), transparent 60%),
+              linear-gradient(180deg, #f8fafc 0%, #eef2f7 100%);
+}
+body.theme-lobe.dark-mode {
+  background: radial-gradient(1100px 520px at 85% -10%, rgba(124,58,237,0.18), transparent 65%),
+              radial-gradient(900px 500px at 0% 100%, rgba(56,189,248,0.14), transparent 65%),
+              linear-gradient(180deg, #0b1220 0%, #0f172a 100%);
+}
+
+/* Chat container: cleaner cardless look on mobile, soft card on desktop */
+body.theme-lobe #chat-container {
+  border-radius: 20px;
+  border: 1px solid var(--glass-border);
+  background: var(--glass-surface);
+  box-shadow: 0 18px 40px rgba(148,163,184,0.22);
+}
+@media (max-width: 768px) {
+  body.theme-lobe #chat-container { border: none; border-radius: 0; background: transparent; box-shadow: none; }
+}
+
+/* Top loading bar color */
+body.theme-lobe #top-loading-bar {
+  background: linear-gradient(90deg, rgba(124,58,237,0.15) 0%, var(--accent) 40%, rgba(59,130,246,0.85) 100%);
+}
+
+/* Message bubbles */
+body.theme-lobe .message {
+  border-radius: 16px;
+  box-shadow: 0 10px 20px rgba(2,6,23,0.06);
+}
+body.theme-lobe .user-message {
+  background: linear-gradient(135deg, #8b5cf6 0%, #06b6d4 100%);
+  color: #0b1120;
+  border: 1px solid rgba(148,163,184,0.2);
+}
+body.theme-lobe.dark-mode .user-message { color: #0b1120; }
+body.theme-lobe .ai-message {
+  background: rgba(248, 250, 252, 0.95);
+  border: 1px solid rgba(148,163,184,0.28);
+}
+body.theme-lobe.dark-mode .ai-message {
+  background: rgba(17, 24, 39, 0.9);
+  border-color: rgba(148,163,184,0.28);
+}
+
+/* Tables within ai-message */
+body.theme-lobe .ai-message .table-wrapper {
+  border: 1px solid rgba(148,163,184,0.22);
+  background: rgba(248, 250, 252, 0.96);
+}
+body.theme-lobe.dark-mode .ai-message .table-wrapper {
+  background: rgba(17, 24, 39, 0.92);
+  border-color: rgba(148,163,184,0.26);
+}
+
+/* Chart container accent */
+body.theme-lobe .chart-container {
+  border-color: rgba(124,58,237,0.35);
+}
+
+/* Action buttons (desktop) */
+body.theme-lobe .action-btn {
+  border-radius: 999px;
+  border: 1px solid rgba(148,163,184,0.28);
+  background: rgba(248,250,252,0.92);
+  color: var(--accent-strong);
+}
+body.theme-lobe .action-btn:hover {
+  background: rgba(219,234,254,0.92);
+  border-color: rgba(124,58,237,0.45);
+}
+
+/* Input area */
+body.theme-lobe #input-area {
+  border-radius: 18px;
+  border: 1px solid rgba(148,163,184,0.28);
+  background: rgba(255,255,255,0.9);
+}
+body.theme-lobe.dark-mode #input-area {
+  background: rgba(15,23,42,0.9);
+  border-color: rgba(148,163,184,0.28);
+}
+body.theme-lobe textarea#command-input {
+  border-radius: 14px;
+  background: rgba(241,245,249,0.9);
+}
+body.theme-lobe.dark-mode textarea#command-input {
+  background: rgba(30,41,59,0.92);
+}
+
+/* Icon buttons incl. style toggle */
+body.theme-lobe .input-btn,
+body.theme-lobe .mobile-icon-btn {
+  border-radius: 14px;
+  border: 1px solid rgba(148,163,184,0.28);
+  background: rgba(248,250,252,0.92);
+  color: var(--accent-strong);
+}
+body.theme-lobe.dark-mode .input-btn,
+body.theme-lobe.dark-mode .mobile-icon-btn {
+  background: rgba(30,41,59,0.92);
+  color: #c4b5fd;
+}
+
+/* Mobile: more button & menu keep consistent */
+body.theme-lobe .msg-more-btn { border-color: rgba(148,163,184,0.28); }
+body.theme-lobe .msg-menu { border-color: rgba(148,163,184,0.28); }
