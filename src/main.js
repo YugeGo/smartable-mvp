@@ -1713,17 +1713,15 @@ function loadSession() {
 function updateMobileWelcomeVisibility() {
 	const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
 	if (!mobileWelcome) return;
+	// 移动端不显示欢迎页与横幅
 	const hasData = Object.keys(workspace || {}).length > 0;
 	const hasMessages = (messages || []).length > 0;
-	const showWelcome = isMobile && !hasData && !hasMessages;
-	mobileWelcome.hidden = !showWelcome;
-	mobileWelcome.setAttribute('aria-hidden', showWelcome ? 'false' : 'true');
-	// 与 Onboarding 互斥
+	const showWelcome = !isMobile && !hasData && !hasMessages;
+	mobileWelcome.hidden = true;
+	mobileWelcome.setAttribute('aria-hidden', 'true');
 	if (onboardingBanner) {
-		if (showWelcome) {
-			onboardingBanner.classList.add('hidden');
-			onboardingBanner.setAttribute('aria-hidden','true');
-		}
+		onboardingBanner.classList.add('hidden');
+		onboardingBanner.setAttribute('aria-hidden','true');
 	}
 }
 
