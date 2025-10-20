@@ -1,12 +1,25 @@
 // src/main.js - V1.6.0 (Vite Migration)
 import '../style.css';
-import * as echarts from 'echarts';
-import * as XLSX from 'xlsx';
 import Papa from 'papaparse';
 
-// 让调试更方便（可选）：在全局挂载
-window.echarts = echarts;
-window.XLSX = XLSX;
+// 动态按需加载大型依赖，减少首包体积
+let _echartsMod = null;
+async function getEcharts() {
+	if (_echartsMod) return _echartsMod;
+	const mod = await import('echarts');
+	_echartsMod = mod?.default || mod; // 兼容不同打包格式
+	try { window.echarts = _echartsMod; } catch (_) {}
+	return _echartsMod;
+}
+
+let _xlsxMod = null;
+async function getXLSX() {
+	if (_xlsxMod) return _xlsxMod;
+	const mod = await import('xlsx');
+	_xlsxMod = mod?.default || mod;
+	try { window.XLSX = _xlsxMod; } catch (_) {}
+	return _xlsxMod;
+}
 
 // --- 以下为原 script.js 逻辑（已直接内联到模块中） ---
 
@@ -164,12 +177,13 @@ const CHART_PROMPT_SHORTCUT_IDS = ['line-trend', 'bar-compare', 'pie-share'];
 
 // --- 3. Core Functions ---
 
-function renderChart(chartOption, containerElement) {
+async function renderChart(chartOption, containerElement) {
 	if (!chartOption) {
 		return;
 	}
 
 	try {
+		const echarts = await getEcharts();
 		const optionClone = typeof structuredClone === 'function'
 			? structuredClone(chartOption)
 			: JSON.parse(JSON.stringify(chartOption));
@@ -308,6 +322,7 @@ function addMessage(sender, content, doSave = true) {
 
 async function downloadAsExcel(csvString) {
 	try {
+		const XLSX = await getXLSX();
 		const aoa = parseCsvToAoA(csvString);
 		const worksheet = XLSX.utils.aoa_to_sheet(aoa);
 		const workbook = XLSX.utils.book_new();
@@ -477,6 +492,7 @@ async function handleFileSelect(event) {
 	updateUploadStatus(`📄 正在读取 ${file.name}...`, 'loading');
 
 	try {
+		const XLSX = await getXLSX();
 		const data = await file.arrayBuffer();
 		const workbook = XLSX.read(data, { type: 'array' });
 		const firstSheetName = workbook.SheetNames[0];
@@ -1607,8 +1623,9 @@ function loadSession() {
 	}
 }
 
-function rerenderAllCharts() {
+async function rerenderAllCharts() {
 	const chartContainers = document.querySelectorAll('.chart-container');
+	const echarts = await getEcharts();
 	chartContainers.forEach(container => {
 		const rawOption = container.dataset.chartOption;
 		if (!rawOption) {
@@ -1876,8 +1893,9 @@ async function loadSampleDataset(fileName) {
 	}
 }
 
-function exportChartImage(messageBubble) {
+async function exportChartImage(messageBubble) {
 	try {
+		const echarts = await getEcharts();
 		const chartContainer = messageBubble.querySelector('.chart-container');
 		if (!chartContainer) return;
 		const inst = echarts.getInstanceByDom(chartContainer);
