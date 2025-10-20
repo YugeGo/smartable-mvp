@@ -1872,7 +1872,7 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 	#send-btn.input-btn { min-width: 48px; width: 48px; height: 48px; border-radius: 16px; font-size: 1.15rem; }
 
 	/* 浮动“＋”按钮（FAB） */
-	#mobile-plus-btn.input-btn { position: fixed; left: 16px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px; border-radius: 50%; background: #ffffff; box-shadow: 0 14px 28px rgba(15,23,42,.25); z-index: 6; border: 1px solid rgba(148,163,184,.28); }
+	#mobile-plus-btn.input-btn { position: fixed; right: 16px; bottom: calc(72px + env(safe-area-inset-bottom, 0px)); width: 52px; height: 52px; border-radius: 50%; background: #ffffff; box-shadow: 0 14px 28px rgba(15,23,42,.25); z-index: 6; border: 1px solid rgba(148,163,184,.28); }
 	body.dark-mode #mobile-plus-btn.input-btn { background: #0b1220; border-color: rgba(148,163,184,.28); }
 
 	/* 增大触控尺寸 */
@@ -1890,11 +1890,68 @@ body.dark-mode .ai-message .table-wrapper tbody tr:nth-child(even) td {
 
 	/* 移动端输入区“更多”菜单 */
 	.mobile-quick-actions[hidden] { display: none; }
-	.mobile-quick-actions { position: fixed; left: 16px; bottom: calc(130px + env(safe-area-inset-bottom, 0px)); min-width: 180px; background: #ffffff; border: 1px solid rgba(148,163,184,.3); border-radius: 14px; box-shadow: 0 16px 28px rgba(15,23,42,.25); padding: .5rem; display: flex; flex-direction: column; gap: .3rem; z-index: 7; }
+	.mobile-quick-actions { position: fixed; right: 16px; bottom: calc(130px + env(safe-area-inset-bottom, 0px)); min-width: 180px; background: #ffffff; border: 1px solid rgba(148,163,184,.3); border-radius: 14px; box-shadow: 0 16px 28px rgba(15,23,42,.25); padding: .5rem; display: flex; flex-direction: column; gap: .3rem; z-index: 7; }
 	body.dark-mode .mobile-quick-actions { background: #0f172a; border-color: rgba(148,163,184,.28); }
 	.mobile-qa-item { text-align: left; border-radius: 12px; border: 1px solid rgba(148,163,184,.28); background: transparent; color: var(--text-primary); padding: .6rem .8rem; }
 	.mobile-qa-item:active, .mobile-qa-item:hover { background: rgba(219,234,254,.9); border-color: rgba(37,99,235,.35); }
 	body.dark-mode .mobile-qa-item:active, body.dark-mode .mobile-qa-item:hover { background: rgba(37,99,235,.2); border-color: rgba(96,165,250,.45); }
+
+	/* 移动端隐藏 PC 风格的卡片内操作按钮，改用“⋯”溢出菜单 */
+	.ai-message .action-buttons { display: none; }
+
+	/* 让消息气泡成为菜单定位容器 */
+	.message { position: relative; }
+
+	/* ‘⋯ 更多’ 触发按钮（移动端） */
+	.msg-more-btn {
+		position: absolute;
+		top: 8px;
+		right: 8px;
+		width: 34px;
+		height: 34px;
+		border-radius: 12px;
+		border: 1px solid rgba(148,163,184,.28);
+		background: rgba(248,250,252,.9);
+		color: var(--text-primary);
+		font-size: 18px;
+		line-height: 1;
+		display: inline-flex;
+		align-items: center;
+		justify-content: center;
+		box-shadow: 0 8px 16px rgba(148,163,184,.2);
+		z-index: 2;
+	}
+	body.dark-mode .msg-more-btn { background: rgba(30,41,59,.92); border-color: rgba(148,163,184,.28); color: #bfdbfe; }
+
+	/* 溢出菜单面板 */
+	.msg-menu[hidden] { display: none; }
+	.msg-menu {
+		position: absolute;
+		right: 8px;
+		top: 46px;
+		min-width: 180px;
+		background: #ffffff;
+		border: 1px solid rgba(148,163,184,.3);
+		border-radius: 14px;
+		box-shadow: 0 16px 28px rgba(15,23,42,.25);
+		padding: .4rem;
+		display: flex;
+		flex-direction: column;
+		gap: .25rem;
+		z-index: 3;
+	}
+	body.dark-mode .msg-menu { background: #0f172a; border-color: rgba(148,163,184,.28); }
+	.msg-menu-item {
+		text-align: left;
+		border-radius: 12px;
+		border: 1px solid rgba(148,163,184,.18);
+		background: transparent;
+		color: var(--text-primary);
+		padding: .55rem .75rem;
+		font-size: 15px;
+	}
+	.msg-menu-item:active, .msg-menu-item:hover { background: rgba(219,234,254,.9); border-color: rgba(37,99,235,.35); }
+	body.dark-mode .msg-menu-item:active, body.dark-mode .msg-menu-item:hover { background: rgba(37,99,235,.2); border-color: rgba(96,165,250,.45); }
 }
 
 /*

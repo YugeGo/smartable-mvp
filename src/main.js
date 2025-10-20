@@ -220,14 +220,14 @@ function addMessage(sender, content, doSave = true) {
 		const chartOption = typeof content === 'object' && content ? content.chart || null : null;
 
 		let rendered = false;
+		const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
+		let deferredContent = null;
 
 		if (chartOption) {
 			messageBubble.classList.add('chart-message');
 		}
 
-		const isMobile = window.matchMedia && window.matchMedia('(max-width: 768px)').matches;
-		let deferredContent = null;
-		let expandBtn = null;
+		// 表格：移动端延迟渲染，桌面端立即渲染
 		if (csvString && csvString.trim() !== '') {
 			const tableContainer = document.createElement('div');
 			tableContainer.classList.add('table-wrapper');
@@ -240,6 +240,7 @@ function addMessage(sender, content, doSave = true) {
 			rendered = true;
 		}
 
+		// 图表：同样按需渲染
 		if (chartOption) {
 			const chartContainer = document.createElement('div');
 			chartContainer.classList.add('chart-container');
@@ -264,17 +265,15 @@ function addMessage(sender, content, doSave = true) {
 			rendered = true;
 		}
 
-		if (csvString && csvString.trim() !== '') {
+		// 操作：桌面端显示按钮；移动端显示“⋯”菜单
+		if (!isMobile && csvString && csvString.trim() !== '') {
 			const actionsContainer = document.createElement('div');
 			actionsContainer.classList.add('action-buttons');
-
 			const downloadBtn = document.createElement('button');
 			downloadBtn.classList.add('action-btn');
 			downloadBtn.textContent = '📥 下载Excel';
 			downloadBtn.addEventListener('click', () => downloadAsExcel(csvString));
-
 			actionsContainer.appendChild(downloadBtn);
-
 			if (chartOption) {
 				const exportImgBtn = document.createElement('button');
 				exportImgBtn.classList.add('action-btn');
@@ -285,19 +284,59 @@ function addMessage(sender, content, doSave = true) {
 			messageBubble.appendChild(actionsContainer);
 		}
 
-		// 移动端默认折叠结果：显示“展开结果”按钮
-		if (isMobile && deferredContent) {
-			expandBtn = document.createElement('button');
-			expandBtn.classList.add('action-btn');
-			expandBtn.textContent = '⬇ 展开结果';
-			expandBtn.addEventListener('click', () => {
-				try { deferredContent(); } catch (_) {}
-				expandBtn.remove();
+		if (isMobile) {
+			const moreBtn = document.createElement('button');
+			moreBtn.type = 'button';
+			moreBtn.className = 'msg-more-btn';
+			moreBtn.setAttribute('aria-label', '更多操作');
+			moreBtn.textContent = '⋯';
+			const menu = document.createElement('div');
+			menu.className = 'msg-menu';
+			menu.setAttribute('hidden', '');
+			menu.setAttribute('role', 'menu');
+
+			const hideMenu = () => { menu.setAttribute('hidden', ''); menu.setAttribute('aria-hidden', 'true'); };
+			const showMenu = () => { menu.removeAttribute('hidden'); menu.setAttribute('aria-hidden', 'false'); };
+			const addItem = (label, onClick) => {
+				const it = document.createElement('button');
+				it.type = 'button';
+				it.className = 'msg-menu-item';
+				it.textContent = label;
+				it.addEventListener('click', () => { try { onClick(); } finally { hideMenu(); } });
+				menu.appendChild(it);
+			};
+
+			if (deferredContent) {
+				addItem('⤵ 展开结果', () => { try { deferredContent(); } catch (_) {} });
+			}
+			if (csvString && csvString.trim() !== '') {
+				addItem('⬇ 下载Excel', () => downloadAsExcel(csvString));
+				addItem('📋 复制CSV', () => { try { navigator.clipboard.writeText(csvString); updateUploadStatus('已复制到剪贴板'); } catch (_) {} });
+			}
+			if (chartOption) {
+				addItem('🖼 下载图片', () => exportChartImage(messageBubble));
+			}
+			addItem('🔁 重试本次命令', () => {
+				const lastUser = [...messages].reverse().find(m => m.sender === 'user');
+				if (lastUser && lastUser.content) {
+					commandInput.value = typeof lastUser.content === 'string' ? lastUser.content : '';
+					handleSendMessage();
+				}
 			});
-			const expWrap = document.createElement('div');
-			expWrap.classList.add('action-buttons');
-			expWrap.appendChild(expandBtn);
-			messageBubble.appendChild(expWrap);
+
+			moreBtn.addEventListener('click', (e) => {
+				e.stopPropagation();
+				const hidden = menu.hasAttribute('hidden');
+				if (hidden) showMenu(); else hideMenu();
+			});
+			document.addEventListener('click', (e) => {
+				if (!menu.contains(e.target) && e.target !== moreBtn) {
+					if (!menu.hasAttribute('hidden')) hideMenu();
+				}
+			});
+
+			messageBubble.appendChild(moreBtn);
+			messageBubble.appendChild(menu);
 		}
 
 		if (!rendered) {
@@ -604,6 +643,7 @@ if (mobilePlusBtn && mobileQuickActions) {
 		const act = btn.getAttribute('data-act');
 		if (act === 'upload') {
 			if (uploadBtn) uploadBtn.click();
+			else if (fileUploadInput) fileUploadInput.click();
 		} else if (act === 'paste') {
 			if (pasteBtn) pasteBtn.click();
 		} else if (act === 'new') {
@@ -665,7 +705,9 @@ if (dataInputColumn) {
 function setLoadingState(isLoading) {
 	sendBtn.disabled = isLoading;
 	commandInput.disabled = isLoading;
-	uploadBtn.disabled = isLoading;
+	if (uploadBtn) {
+		uploadBtn.disabled = isLoading;
+	}
 	if (pasteBtn) {
 		pasteBtn.disabled = isLoading;
 	}
